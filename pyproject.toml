@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "growl_reg"
+version = "0.1.0"
+description = "GrOWL regression estimator with OWL, OSCAR, and Lasso variants"
+readme = "README.md"
+authors = [
+    { name="Matheus Lopes Carrijo" }
+]
+license = { text = "MIT" }
+dependencies = [
+    "numpy >=1.21.0",
+    "scikit-learn >=1.0",
+    "matplotlib >=3.0.0"
+]
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://github.com/matheuscarrijo/growl_reg"
+Repository = "https://github.com/matheuscarrijo/growl_reg"
