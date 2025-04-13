@@ -1,4 +1,8 @@
-# Group Ordered Weighted $\ell_1$ (GrOWL) Norm
+[![PyPI version](https://img.shields.io/pypi/v/growl-reg)](https://pypi.org/project/growl-reg/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python >=3.8](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
+
+# 🧮 Group Ordered Weighted $\ell_1$ (GrOWL) Norm
 
 This repository provides a Python implementation of the **Group Ordered Weighted
  $\ell_1$ (GrOWL) Norm** regularization using the **Proximal Operator 
@@ -23,7 +27,7 @@ multi-task ($p > 1$) version of the standard ($p=1$) Ordered Weighted
 $\ell_1$ (OWL) Norm introduced independently by Zeng and Figueiredo (2014a) 
 and Bogdan et al. (2013). 
 
-Due to the non-smoothness of the GrOWL penalty, a closed-form solution to this 
+Due to the non-smothness of the GrOWL penalty, a closed-form solution to this 
 problem is not available. However, the objective function remains convex, 
 allowing the use of efficient proximal optimization algorithms to reliably compute 
 the solution. Specifically, it is used the Proximal Gradient Method with 
@@ -35,7 +39,7 @@ to Parikh and Boyd (2013).
 
 ---
 
-## Mathematical Background
+## 📐 Mathematical Background
 
 <!-- The standard ($p = 1$) Ordered Weighted $\ell_1$ (OWL) regularization
 problem can be written as
@@ -169,7 +173,7 @@ The proximal operators evaluations are implemented in the functions 'prox_owl()'
 
 ---
 
-## Repository Structure
+## 🗂 Repository Structure
 
 Below are the important modules in this project and their functionalities:
 
@@ -225,7 +229,7 @@ Below are the important modules in this project and their functionalities:
 
 ---
 
-## Setup
+## ⚙️ Setup
 
 **Install the repository:**
 
@@ -237,7 +241,7 @@ Below are the important modules in this project and their functionalities:
 
 ---
 
-## References 
+## 📚 References
 
 Beck, A. and Teboulle, M. "A fast iterative shrinkage-thresholding algorithm
 for linear inverse problems", _SIAM Journal on Imaging Sciences, vol. 2, no. 1,
@@ -262,3 +266,26 @@ Regularization". arXiv preprint
 Zeng, X. and Figueiredo, M, 2014b. "The ordered weighted $\ell_1$ norm - atomic 
 formulation, projections, and Algorithms". arXiv preprint 
 [arXiv:1409.4271v5](https://arxiv.org/abs/1409.4271), 2014.
+
+---
+
+## 📑 Citation
+
+If you use `growl_reg` in your work, please cite it as:
+
+Matheus Lopes Carrijo. "GrOWL Regression Estimator (Python package)." 2025. 
+Available at: https://github.com/matheuscarrijo/growl_reg
+
+
+Or use the following BibTeX entry:
+
+```bibtex
+@misc{carrijo2025growl,
+  author       = {Carrijo, M. L.},
+  title        = {GrOWL Regression Estimator (Python Package)},
+  year         = {2025},
+  howpublished = {https://github.com/matheuscarrijo/growl_reg},
+  note         = {Version 0.0.1}
+}
+```
+
