@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
-from .solver import growl_fista  # from your growl/solver.py
+from .fista_solver import growl_fista 
 
 class GrowlRegressor(BaseEstimator, RegressorMixin):
     """
