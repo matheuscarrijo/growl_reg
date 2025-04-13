@@ -1,65 +1,171 @@
-# Group Ordered Weighted \(\ell_1\) Norm (GrOWL)
+# Group Ordered Weighted $\ell_1$ (GrOWL) Norm
 
 This repository provides a Python implementation of the **Group Ordered Weighted
- \(\ell_1\) Norm (GrOWL)** regularization using the **Proximal Operator** and 
- the **Fast Iterative Shrinkage-Thresholding Algorithm (FISTA)**. It contains 
- various modules that together solve the following general optimization problem:
+ $\ell_1$ (GrOWL) Norm** regularization using the **Proximal Operator 
+ algorithm** and the **Fast Iterative Shrinkage-Thresholding Algorithm (FISTA)**. 
+ It solves the following general optimization problem:
 
-\[
-\min_{\beta} \; \frac{1}{2}\| y - X\beta \|_2^2 + \text{GrOWL}(\beta; \mathbf{w}, G),
-\]
+$$
+\min_{B} \frac{1}{2n} \lVert Y - XB \rVert_F^2 + 
+\sum_i w_i \space \lVert \beta\_{[i], \cdot}\rVert_2 \space, \quad \quad \quad (1)
+$$
 
-where \(X \in \mathbb{R}^{n \times p}\) is the data matrix, 
-\(y \in \mathbb{R}^{n}\) is the response vector, \(\beta \in \mathbb{R}^{p}\) 
-are the coefficients we want to estimate, and 
-\(\text{GrOWL}(\beta; \mathbf{w}, G)\) is the 
-**Group Ordered Weighted \(\ell_1\) Norm** of \(\beta\), parameterized by 
-weights \(\mathbf{w}\) and a grouping structure \(G\).
+where  
+- $X \in \mathbb{R}^{n \times r}$ is the design matrix,  
+- $Y \in \mathbb{R}^{n \times p}$ is the matrix of response variables,  
+- $B \in \mathbb{R}^{r \times p}$ is the coefficient matrix to be estimated,  
+- $\beta\_{[i], \cdot}$ denotes the $i$-th largest row of $B$ in terms of 
+  its $\ell_2$-norm, and  
+- $w \in \mathbb{R}^r$ is a vector of non-negative, non-increasing weights.
+
+This regularizaton problem was introduced by Oswal et al. (2016) and it is a 
+multi-task ($p > 1$) version of the standard ($p=1$) Ordered Weighted 
+$\ell_1$ (OWL) Norm introduced independently by Zeng and Figueiredo (2014a) 
+and Bogdan et al. (2013). 
+
+Due to the non-smoothness of the GrOWL penalty, a closed-form solution to this 
+problem is not available. However, the objective function remains convex, 
+allowing the use of efficient proximal optimization algorithms to reliably compute 
+the solution. Specifically, it is used the Proximal Gradient Method with 
+**Fast Iterative Shrinkage-Thresholding Algorithm (FISTA)** from Beck and 
+Teboulle (2009). Readers who are not familiar with proximal algorithms are referred 
+to Parikh and Boyd (2013).
+
+---
 
 ---
 
 ## Mathematical Background
 
-### 1. Group Ordered Weighted \(\ell_1\) Norm (GrOWL)
+<!-- The standard ($p = 1$) Ordered Weighted $\ell_1$ (OWL) regularization
+problem can be written as
 
-The standard Ordered Weighted \(\ell_1\) (OWL) norm arranges the coefficients of
- \(\beta\) in non-increasing order of magnitude and applies descending weights 
- \(w_1 \ge w_2 \ge \cdots \ge w_p \ge 0\). The **group** extension, **GrOWL**, 
- extends this idea by:
+$$
+\min_{\beta} \frac{1}{2n} \lVerty - X\beta
+Vert_2^2 + \sum_i w_i |\beta\_{[i]}|,
+$$
 
-1. Partitioning the coefficient vector \(\beta\) into predefined groups (blocks).
-2. Computing the (sorted) norms of these groups.
-3. Applying descending weights to the group norms instead of individual 
-coefficients.
+where $w$ is as before but now we have $p=1$, and then $y := Y \in 
+\mathbb{R}^{n \times 1}$ and $\beta := B \in \mathbb{R}^{r \times 1}$,
+with $\beta\_{[i]}$ being the $i$-th largest component of $\beta$. -->
 
-Formally, assume \(\beta\) is partitioned into \(G\) groups, 
-\( \{\beta_1, \beta_2, \ldots, \beta_G\}\). Then, for each group \(g\), 
-we compute the Euclidean norm \(\|\beta_g\|_2\). We reorder these group norms in
- a non-increasing manner:
-\[
-\|\beta_{(1)}\|_2 \ge \|\beta_{(2)}\|_2 \ge \cdots \ge \|\beta_{(G)}\|_2,
-\]
-where \((1),(2),\ldots,(G)\) is a permutation of \(1,2,\ldots,G\) that sorts the
-norms from largest to smallest. Given a weight vector 
-\(\mathbf{w} = (w_1, w_2, \ldots, w_G)\) with
-\(w_1 \ge w_2 \ge \cdots \ge w_G \ge 0\), we define **GrOWL** as:
+Due to non-smothness of the penalty term in (1), this optimization problem 
+has no closed-form solution. Proximal operator algorithms is employed to solve
+it. The proximal operator of the GrOWL norm is given by
 
-\[
-\text{GrOWL}(\beta; \mathbf{w}, G) 
-= \sum_{g=1}^{G} w_g \|\beta_{(g)}\|_2.
-\]
+$$
+\mathrm{prox}_G(V) = \mathrm{arg min}_B \space \frac{1}{2} \lVert B - V \rVert_F^2 + 
+\sum_i w_i \space \lVert \beta\_{[i], \cdot} \rVert_2.
+$$
 
-### 2. Optimization Problem
+The proximal operator of GrOWL is solved in terms of the proximal operator of 
+the standard OWL (when $p=1$) norm, denoted by $\mathrm{prox}\_{\Omega_w}$. We thus 
+have the following result:
 
-We want to solve a regularized least squares problem of the form:
+---
 
-\[
-\min_{\beta \in \mathbb{R}^p} \; \frac{1}{2}\|y - X\beta\|_2^2 + \lambda \, 
-\text{GrOWL}(\beta; \mathbf{w}, G),
-\]
+**Theorem 4 from Oswal et al. (2016).**  
+Let $\tilde{v}_i = \lVert v\_{i,\cdot}\rVert$ for $i = 1, ..., p$. Then 
+$\mathrm{prox}_G(V) = \hat{V}$, where the $i$-th row of $\hat{V}$ is given by
 
-where \(\lambda\) is a regularization parameter that controls the trade-off 
-between the data fidelity term and the regularization term.
+$$
+\hat{\mathbf{v}}\_{i,\cdot} = 
+\left(\mathrm{prox}\_{\Omega_w}(\tilde{\mathbf{v}}) \right)_i \times
+\frac{\mathbf{v}\_{i,\cdot}}{\lVert \mathbf{v}\_{i,\cdot} \rVert}.
+$$
+
+---
+
+The formulation of $\mathrm{prox}\_{\Omega_w}$ is given in equation (24) of
+Zeng and Figueiredo (2014b):
+
+$$
+\mathrm{prox}\_{\Omega_w}(\mathbf{\tilde{v}}) = 
+\mathrm{sign}(\mathbf{\tilde{v}}) \odot \left( \mathbf{P}(|\mathbf{\tilde{v}}|)^T 
+\mathrm{proj}\_{\mathbb{R}\_+^n} \left( \mathrm{proj}\_{\mathcal{K}\_m} 
+(|\mathbf{\tilde{v}}|\_{\downarrow} - \mathbf{w}) \right) \right),
+$$
+
+where
+- $\mathrm{sign}(\mathbf{\tilde{v}})$ denotes the elementwise sign 
+  of vector $\mathbf{\tilde{v}}$.
+- $\odot$ is the Hadamard (elementwise) product.
+- $\mathbf{P}(|\mathbf{\tilde{v}}|)$ is the permutation matrix that 
+  sorts the absolute values $|\mathbf{\tilde{v}}|$ in non-increasing order,
+  i.e., $|\mathbf{v}|\_{\downarrow} = \mathbf{P}(|\mathbf{\tilde{v}}|) 
+  |\mathbf{\tilde{v}}|$.
+- $\mathrm{proj}\_{\mathcal{K}_m}$ is the Euclidean projection 
+  onto the monotone cone $\mathcal{K}\_m =$ {$\mathbf{x} 
+  \in \mathbb{R}^n : x_1 \geq x_2 \geq \cdots \geq x_n$}, 
+  implemented using the Pool Adjacent Violators (PAV) algorithm.
+- $\mathrm{proj}\_{\mathbb{R}_+^n}$ is the Euclidean projection
+  onto the nonnegative orthant, i.e., it replaces negative values by zero 
+  (clipping).
+- $\mathbf{w}$ is a weight vector satisfying $w_1 \geq w_2 \geq
+  \cdots \geq w_n \geq 0$.
+- $|\mathbf{\tilde{v}}|\_{\downarrow}$ denotes the absolute values of
+  $\mathbf{\tilde{v}}$ sorted in non-increasing order.
+
+We use **FISTA** (Beck and Teboulle, 2009), which is an accelerated first-order 
+method designed for problems of the form:
+
+$$
+\min_{B} f(B) + g(B),
+$$
+
+where $f$ is convex and differentiable with Lipschitz continuous gradient, 
+and $g$ is convex (possibly non-smooth) with a proximal operator that can be 
+computed efficiently.
+
+In our case:
+- $f(B) := \frac{1}{2n} \lVert Y - XB \rVert_2^2$ is the smooth loss,
+- $g(B) := \sum_i w_i \space \lVert \beta\_{[i], \cdot}\rVert_2$ is the GrOWL
+  penalty.
+
+FISTA proceeds by alternating between gradient descent steps on $f$ and proximal 
+steps on $g$, with a Nesterov-type momentum update to accelerate convergence. Each
+iteration consists of:
+
+1. **Gradient step:**
+
+$$
+V^{(k)} = Z^{(k)} - \frac{1}{L} \nabla f(Z^{(k)}),
+$$
+
+where $L$ is the Lipschitz constant of $\nabla f$, computed as 
+$L = \lVert X \rVert_2^2/n$, where $\lVert X \rVert_2$ denotes the spectral norm of the matrix $X$.
+
+2. **Proximal step using the GrOWL operator:**
+
+$$
+B^{(k+1)} = \mathrm{prox}_G (V^{(k)}),
+$$
+
+which is implemented as described earlier, using the Pool Adjacent Violators (PAV) 
+algorithm for isotonic regression and restoring the original signs and order.
+
+3. **Nesterov momentum step:**
+
+$$
+t_{k+1} = \frac{1}{2} \left(1 + \sqrt{1 + 4t_k^2} \right), \quad
+Z^{(k+1)} = B^{(k+1)} + \left( \frac{t_k - 1}{t_{k+1}} \right) (B^{(k+1)} - B^{(k)}).
+$$
+
+The algorithm continues until convergence is detected, based on one of three 
+user-defined stopping criteria:
+- Absolute change in objective value,
+- Relative change in objective value,
+- Frobenius norm of the difference between successive iterates.
+
+This FISTA procedure is implemented in the function `growl_fista()` inside the file 
+'fista_solver.py' in the codebase. The function handles flexible weight vector definitions 
+(manual or parameterized via `lambda_1`,  `lambda_2`, and `ramp_size`) and returns the 
+estimated coefficient matrix along with the cost history. 
+
+The proximal operators evaluations are implemented in the functions 'prox_owl()' and
+'prox_growl()' inside the file 'prox_operator.py'.
+
+---
 
 ---
 
@@ -68,54 +174,91 @@ between the data fidelity term and the regularization term.
 Below are the important modules in this project and their functionalities:
 
 1. **`__init__.py`**  
-   This file makes the folder into a Python package. It may contain import 
-   statements that expose key functions or classes at the package level.
+   This file is part of the `growl/` module and exposes the `GrowlRegressor` class
+   as the main interface for the package. It enables clean imports such as:
+   
+   ```python
+   from growl import GrowlRegressor
+   ```
 
-2. **`base.py`**  
-   Defines base classes or utility functions used across different parts of the 
-   solver. This can include:
-   - Data structures for storing problem parameters (e.g., \(X\), \(y\), groups).
-   - Common helper methods for logging and checks.
+3. **`base.py`**  
+   Contains the main class `GrowlRegressor`, a `scikit-learn` compatible estimator that
+   implements GrOWL regression. This class provides:
+   
+   - `.fit(X, Y)` to estimate coefficients using the GrOWL penalty
+   - `.predict(X)` for in-sample or out-of-sample predictions
+   - Integration with `GridSearchCV`
+   - Optional centering of `X` and `Y` when `fit_intercept=True`
+   - Storage of the coefficient matrix `coef_` and optimization history `cost_history_`
 
-3. **`prox_operator.py`**  
-   Implements the **Proximal Operator** associated with the GrOWL penalty. The 
-   proximal operator is essential for iterative algorithms (like FISTA) that 
-   solve optimization problems involving non-smooth terms.  
-   - **Key function**: `prox_growl(...)`  
-     This function performs the group-sorting, computes group norms, and applies
-     the weighted shrinkage (or thresholding) needed to reflect the GrOWL 
-     penalty in each iteration.
+5. **`prox_operator.py`**  
+   Implements proximal operators required for optimization:
+   - `prox_owl(v, w)`: Evaluate the proximal operator for the OWL penalty.
+   - `prox_growl(V, w)`: Evaluate the proximal operator for the GrOWL penalty.
 
-4. **`fista_solver.py`**  
-   Implements the **Fast Iterative Shrinkage-Thresholding Algorithm (FISTA)**, 
-   an accelerated first-order method. The algorithm proceeds by:
-   1. Computing the gradient of the smooth part of the objective 
-   (\(\frac{1}{2}\|y - X\beta\|^2\)).
-   2. Making a gradient-descent-like step.
-   3. Applying the **proximal operator** to incorporate the GrOWL penalty.
-   4. Updating an acceleration parameter to speed up convergence.  
-   - **Key function**: `fista_growl(...)`  
-     Solves the GrOWL-regularized problem using FISTA. Takes in:
-     - Data \((X, y)\)
-     - Regularization parameter \(\lambda\)
-     - Weights \(\mathbf{w}\)
-     - Group structure
-     - Step size or Lipschitz constant
-     - Maximum iterations and tolerance  
-     Returns the estimated coefficient vector \(\beta\).
+6. **`fista_solver.py`**  
+   Implements the FISTA-based optimization routine used to solve the GrOWL regularized
+   least-squares problem. This module includes:
+   
+   - `growl_fista(...)`: A solver using Nesterov’s acceleration
+   - Weight vector construction based on `lambda_1`, `lambda_2`, and `ramp_size`
+   - Convergence monitoring based on cost, relative cost, or solution change
+   - Optional scaling of the objective function to improve numerical stability
 
-5. **`growl_example.py`**  
-   Provides an example script showing how to:
-   - Define or load input data \((X, y)\).
-   - Specify groups and corresponding weights.
-   - Call the FISTA solver with the GrOWL proximal operator.
-   - Inspect or visualize the results (e.g., solution path or final \(\beta\)).
+8. **`growl_example.py`**  
+   Located in the `examples/` folder, this script demonstrates the usage of
+   the `GrowlRegressor`:
+   
+   - Grid search over hyperparameters (`lambda_1`, `lambda_2`, `ramp_size`)
+   - Visual comparisons between:
+     - True vs estimated coefficients
+     - GrOWL vs MultiTaskLasso (for pooled regression)
+     - GrOWL (OWL style) vs Lasso (for standard regression)
+   - Plots showing grouping behavior and coefficient shrinkage
+
+   To run the example, use:
+   ```bash
+   python examples/growl_example.py
+   ```
 
 ---
 
-## Usage
+---
 
-1. **Install/Clone the repository**  
-   Simply clone or download this repository to your local machine:
+## Setup
+
+**Install the repository:**
+
    ```bash
-   git clone <this-repository-url>
+   pip install growl_reg
+   ```
+
+---
+
+---
+
+## References 
+
+Beck, A. and Teboulle, M. "A fast iterative shrinkage-thresholding algorithm
+for linear inverse problems", _SIAM Journal on Imaging Sciences, vol. 2, no. 1,
+pp. 183–202_, 2009.
+
+Bogdan, J., Berg, E., Su, W. and Candes, E. "Statistical 
+estimation and testing via the ordered $\ell_1$ norm", arXiv preprint 
+[arxiv:1310.1969v2](https://arxiv.org/abs/1310.1969) 2013.
+
+Oswal, U., Cox, C., Ralph, M. A. L., and Rogers, T., Nowak, R., 2016. 
+"Representational Similarity Learning with Application to Brain Networks". 
+_Proceedings of the 33 rd International Conference on Machine Learning, 
+New York, NY, USA, 2016. JMLR: W\&CP volume 48_.
+
+Parikh, Neal and Boyd, Stephen. "Proximal algorithms". _Foundations and Trends
+in optimization_, 1(3):123–231, 2013.
+
+Zeng, X. and Figueiredo, M, 2014a. "Decreasing Weighted Sorted $\ell_1$ 
+Regularization". arXiv preprint 
+[arXiv:1404.3184v1](https://arxiv.org/abs/1404.3184), 2014.
+
+Zeng, X. and Figueiredo, M, 2014b. "The ordered weighted $\ell_1$ norm - atomic 
+formulation, projections, and Algorithms". arXiv preprint 
+[arXiv:1409.4271v5](https://arxiv.org/abs/1409.4271), 2014.
