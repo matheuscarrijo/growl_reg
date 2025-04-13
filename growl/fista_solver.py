@@ -7,7 +7,7 @@ def growl_fista(X, Y, lambda_1=None, lambda_2=None, ramp_size=None,
     """
     Solve the GrOWL-regularized least-squares problem:
 
-        min_B (1/2n) * ||Y - X B||_F^2  +  sum_i w_i || \beta_{i, \cdot} ||_2
+        min_B (1/2n) * ||Y - X B||_F^2  +  \sum_i w_i || \beta_{[i], \cdot} ||_2
 
     using a FISTA-type proximal splitting scheme.
 
@@ -32,7 +32,7 @@ def growl_fista(X, Y, lambda_1=None, lambda_2=None, ramp_size=None,
 
     3. Ramp: set ramp_size in (0, 1).
        For i = 1, ..., ramp_size = int(np.ceil(ramp_size * p)):
-           w_i = lambda_1 + lambda_2*(ramp_size = int(np.ceil(ramp_size * p)) - i + 1)
+           w_i = lambda_1+lambda_2*(ramp_size = int(np.ceil(ramp_size * p))-i+1)
        For i = ramp_size = int(np.ceil(ramp_size * p)) + 1, ..., p:
            w_i = lambda_1
 

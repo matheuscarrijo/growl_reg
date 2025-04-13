@@ -80,7 +80,7 @@ def prox_growl(V, w):
     """
     Calculates proximal operator given by 
     
-       prx_G(V) = argmin_B (1/2)||B - V||_F^2 + sum_i w_i ||\beta_{i\cdot}||_2,
+       prox_G(V) = argmin_B (1/2)||B - V||_F^2 + sum_i w_i ||\beta_{i\cdot}||_2,
     
     given that w is sorted in non-increasing order (w_1 >= ... >= w_p >= 0).
     """

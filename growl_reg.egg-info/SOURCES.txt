@@ -1,0 +1,15 @@
+LICENSE
+MANIFEST.in
+README.md
+pyproject.toml
+setup.py
+examples/growl_example.py
+growl/__init__.py
+growl/base.py
+growl/fista_solver.py
+growl/prox_operator.py
+growl_reg.egg-info/PKG-INFO
+growl_reg.egg-info/SOURCES.txt
+growl_reg.egg-info/dependency_links.txt
+growl_reg.egg-info/requires.txt
+growl_reg.egg-info/top_level.txt

@@ -1,3 +1,19 @@
+Metadata-Version: 2.4
+Name: growl_reg
+Version: 0.1.0
+Summary: GrOWL regression estimator with OWL, OSCAR, and Lasso variants
+Author: Matheus Lopes Carrijo
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/matheuscarrijo/growl_reg
+Project-URL: Repository, https://github.com/matheuscarrijo/growl_reg
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: scikit-learn>=1.0
+Requires-Dist: matplotlib>=3.0.0
+Dynamic: license-file
+
 [![PyPI version](https://img.shields.io/pypi/v/growl-reg)](https://pypi.org/project/growl-reg/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python >=3.8](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
@@ -288,4 +304,3 @@ Or use the following BibTeX entry:
   note         = {Version 0.0.1}
 }
 ```
-

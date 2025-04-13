@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [
     { name="Matheus Lopes Carrijo" }
 ]
-license = { text = "MIT" }
+license = "MIT"
 dependencies = [
     "numpy >=1.21.0",
     "scikit-learn >=1.0",
