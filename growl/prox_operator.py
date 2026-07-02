@@ -36,45 +36,50 @@ def prox_owl(v, w):
         np.ndarray: The result of applying the OWL proximal operator to v.
     """
 
+    v = np.asarray(v, dtype=float)
+    w = np.asarray(w, dtype=float)
+
     # 1. Sort |v| in descending order, keep track of the sort index
     abs_v = np.abs(v)
     sort_idx = np.argsort(-abs_v)  # indices that sort abs_v in descending order
     abs_v_sorted = abs_v[sort_idx]
 
-    # 2. Apply Pool Adjacent Violators (PAV) algorithm for isotonic regression
-
-    # Step 1: z_i = abs_v_sorted[i] - w[i], then sort z in descending order if
-    # needed
+    # 2. Threshold with the weights: z_i = |v|_(i) - w_i
     z = abs_v_sorted - w
 
-    # Step 2: the "pool adjacent violators" for z in descending order
-    #         ensuring the final vector is sorted and each entry >= 0
-    z_proj = np.zeros_like(z)
+    # 3. Project z onto the non-increasing cone with the Pool Adjacent
+    #    Violators (PAV) algorithm. A stack of (block mean, block size) pairs
+    #    is maintained; whenever a new block's mean exceeds the mean of the
+    #    block before it, the two blocks are merged and the check is repeated
+    #    against the (new) previous block. This backward re-merging is what
+    #    makes the projection exact -- a single forward pass that only pools
+    #    adjacent raw violations does not solve the isotonic problem.
+    block_means = []
+    block_sizes = []
+    for val in z:
+        mean = float(val)
+        size = 1
+        while block_means and block_means[-1] < mean:
+            prev_mean = block_means.pop()
+            prev_size = block_sizes.pop()
+            mean = (mean * size + prev_mean * prev_size) / (size + prev_size)
+            size += prev_size
+        block_means.append(mean)
+        block_sizes.append(size)
 
-    start = 0
-    while start < len(z):
-        end = start
-        # average the block [start, end] if any negativity or non-increasing 
-        # violation arises
-        block_sum = z[start]
-        # Merge blocks while the sorted order is violated (i.e. z[end+1] > z[end])
-        while end + 1 < len(z) and z[end+1] > z[end]:
-            end += 1
-            block_sum += z[end]
+    z_proj = np.empty_like(z)
+    pos = 0
+    for mean, size in zip(block_means, block_sizes):
+        z_proj[pos:pos + size] = mean
+        pos += size
 
-        # block is from start to end
-        avg = block_sum / (end - start + 1)
-        for j in range(start, end + 1):
-            z_proj[j] = max(avg, 0)
-        start = end + 1
-
-    # Re-map back to original order and restore sign
+    # 4. Clip at zero (projection onto the non-increasing, non-negative cone),
+    #    re-map back to the original order, and restore signs.
+    z_proj = np.maximum(z_proj, 0.0)
     v_final = np.zeros_like(v)
-    for i in range(len(v)):
-        idx = sort_idx[i]
-        v_final[idx] = np.sign(v[idx]) * z_proj[i]
+    v_final[sort_idx] = z_proj
 
-    return v_final
+    return np.sign(v) * v_final
 
 def prox_growl(V, w):
     """
