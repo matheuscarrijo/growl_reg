@@ -285,7 +285,7 @@ Or use the following BibTeX entry:
   title        = {GrOWL Regression Estimator (Python Package)},
   year         = {2025},
   howpublished = {https://github.com/matheuscarrijo/growl_reg},
-  note         = {Version 0.0.1}
+  note         = {Version 0.1.3}
 }
 ```
 
