@@ -32,6 +32,7 @@ from scipy.stats import spearmanr
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import calibration as cal  # noqa: E402
+import metrics as mt  # noqa: E402
 
 RAW = HERE / "results" / "raw"
 OUT = HERE / "results"
@@ -65,6 +66,23 @@ def load(scenario):
     return out
 
 
+def _tie_purity(norms, fam):
+    """Same-family share of the pairs inside tie groups, and its chance level."""
+    groups = mt._tie_groups(norms.astype(np.float32))
+    within = total = 0
+    for g in groups:
+        f = fam[np.array(g)]
+        same = f[:, None] == f[None, :]
+        iu = np.triu_indices(len(g), 1)
+        within += int(same[iu].sum())
+        total += iu[0].size
+    sel = np.flatnonzero(norms > 0)
+    f = fam[sel]
+    iu = np.triu_indices(sel.size, 1)
+    base = float(np.mean((f[:, None] == f[None, :])[iu])) if sel.size > 1 else np.nan
+    return {"tie_pairs": total, "tie_pairs_same_family": within, "selected_pairs_same_family": base}
+
+
 def tables(results):
     rows, diags, fam_rows, land_rows, solver_rows = [], [], [], [], []
     for scen, reps in results.items():
@@ -87,11 +105,13 @@ def tables(results):
             diags.append(d)
             fam = np.asarray(res["family"])
             for (variant, meth, rule), norms in res["norms"].items():
-                sel = np.asarray(norms) > 0
+                norms = np.asarray(norms, dtype=float)
+                sel = norms > 0
                 rec = {"scenario": scen, "rep": res["rep"], "target": variant,
                        "method": meth, "rule": rule}
                 for f, name in enumerate(FAMILIES):
                     rec[name] = bool(np.any(sel[fam == f]))
+                rec.update(_tie_purity(norms, fam))
                 fam_rows.append(rec)
             for variant, L in res["landscape"].items():
                 rho, _ = spearmanr(L["g_mean"], L["g_oos_rel"])
@@ -156,7 +176,7 @@ KEY_ROWS = [
 ]
 
 
-def markdown_tables(summary, diag, land, solver):
+def markdown_tables(summary, diag, land, solver, fam):
     lines = []
     fmt = lambda x, d=3: "" if pd.isna(x) else f"{x:.{d}f}"  # noqa: E731
     pct = lambda x: "" if pd.isna(x) else f"{100 * x:.0f}%"  # noqa: E731
@@ -211,6 +231,48 @@ def markdown_tables(summary, diag, land, solver):
                          f"{L.spearman_cv_vs_oos.mean():.2f} | {L.regret_oos_rel_mse.mean():.3f} | "
                          f"{L.cv_rank_of_oracle_cell.median():.0f} | {L.n_cells_within_1se.median():.0f} |")
     lines.append("")
+    lines += ["### Grouping inside the six style families", "",
+              "Members per selected style family, mean cosine between the selected rows of one "
+              "family, and number of factors in exact row-norm ties.", "",
+              "| Scenario | Tuning | Method | # selected | members / selected family | "
+              "within-family cosine | tied factors | tie pairs in same family | "
+              "same-family share of all selected pairs (chance) |",
+              "|---|---|---|---|---|---|---|---|---|"]
+    group_keys = [("pipeline_olsproj", "cv_min", "CV, OLS projection"),
+                  ("pipeline", "oracle", "best grid cell"),
+                  ("oracle", "cv_min", "true target, CV")]
+    for scen in [s for s in SCENARIO_ORDER if s in summary["scenario"].unique()]:
+        if scen.startswith("D0"):
+            continue
+        S = summary[summary["scenario"] == scen].set_index(["target", "method", "rule"])
+        for target, rule, label in group_keys:
+            for meth in ("growl", "mtl", "enet"):
+                if (target, meth, rule) not in S.index:
+                    continue
+                r = S.loc[(target, meth, rule)]
+                F = fam[(fam.scenario == scen) & (fam.target == target) & (fam.method == meth)
+                        & (fam.rule == rule)]
+                tie_share = (F.tie_pairs_same_family.sum() / F.tie_pairs.sum()
+                             if F.tie_pairs.sum() else np.nan)
+                lines.append(f"| {scen} | {label} | {meth} | {fmt(r.n_selected, 1)} | "
+                             f"{fmt(r.members_per_selected_style_family, 2)} | "
+                             f"{fmt(r.within_family_cosine, 2)} | {fmt(r.n_tied_factors, 1)} | "
+                             f"{pct(tie_share)} | {pct(F.selected_pairs_same_family.mean())} |")
+    lines.append("")
+
+    if "tight_support_jaccard_mean" in summary:
+        T = summary[(summary.method == "growl") & summary.tight_support_jaccard_mean.notna()]
+        lines += ["### Accuracy of the tol = 1e-4 solutions at the selected cells", "",
+                  "Each selected GrOWL cell is solved again with tol = 1e-9.", "",
+                  "| Scenario | CV variant | rule | Jaccard(support, tight support) | "
+                  "share of cells that hit max_iter in a fold |",
+                  "|---|---|---|---|---|"]
+        for _, r in T.iterrows():
+            lines.append(f"| {r.scenario} | {r.target} | {r.rule} | "
+                         f"{fmt(r.tight_support_jaccard_mean, 3)} | "
+                         f"{pct(r.get('hit_max_iter_any_fold_mean', np.nan))} |")
+        lines.append("")
+
     if not solver.empty:
         lines += ["### Package-solver spot checks", "",
                   f"{len(solver)} cells re-solved with `growl.fista_solver.growl_fista`: "
@@ -339,11 +401,11 @@ def main():
     rows.to_csv(OUT / "replication_metrics.csv.gz", index=False)
     diag.to_csv(OUT / "first_stage_diagnostics.csv", index=False)
     summary.to_csv(OUT / "summary_by_method.csv", index=False)
-    fam.groupby(["scenario", "target", "method", "rule"])[FAMILIES].mean().reset_index().to_csv(
+    fam.groupby(["scenario", "target", "method", "rule"])[FAMILIES + ["selected_pairs_same_family"]].mean().reset_index().to_csv(
         OUT / "family_selection_frequency.csv", index=False)
     land.to_csv(OUT / "cv_landscape_diagnostics.csv", index=False)
     solver.to_csv(OUT / "solver_checks.csv", index=False)
-    md = markdown_tables(summary, diag, land, solver)
+    md = markdown_tables(summary, diag, land, solver, fam)
     (OUT / "summary_tables.md").write_text(md, encoding="utf-8")
     fig_oos(summary)
     fig_support(rows)
