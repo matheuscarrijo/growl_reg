@@ -225,6 +225,14 @@ Below are the important modules in this project and their functionalities:
    python examples/growl_example.py
    ```
 
+9. **`factor_zoo_simulation/`**  
+   Located in the `examples/` folder, this is a Monte Carlo study of GrOWL as the
+   second stage of a latent + observed factor model of stock returns (an APT
+   factor model calibrated to CRSP returns and the Jensen-Kelly-Pedersen factor
+   zoo). It checks the solver, the recovery of the true factors and the
+   hyperparameter selection by inside-loop PCA hv-block cross-validation. See
+   `examples/factor_zoo_simulation/README.md`.
+
 ---
 
 ---

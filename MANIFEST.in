@@ -1,2 +1,4 @@
 include README.md
 recursive-include examples *
+prune examples/factor_zoo_simulation/results/raw
+global-exclude __pycache__ *.py[cod]
