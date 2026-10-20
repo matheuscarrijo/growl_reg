@@ -332,7 +332,7 @@ def fig_oos(summary):
     S = summary.set_index(["scenario", "target", "method", "rule"])
     series = [("pipeline", "growl", "cv_min"), ("pipeline_olsproj", "growl", "cv_min"),
               ("oracle", "growl", "cv_min")]
-    fig, ax = plt.subplots(figsize=(8.5, 3.6))
+    fig, ax = plt.subplots(figsize=(max(8.5, 1.35 * len(scen)), 3.6))
     width = 0.24
     x = np.arange(len(scen))
     for j, key in enumerate(series):
@@ -348,7 +348,7 @@ def fig_oos(summary):
                label="GrOWL, best grid cell, EM-PCA target (infeasible)")
     ax.scatter(x, mkt, marker="_", s=400, color=BENCH, linewidths=2.5, zorder=3,
                label="OLS on mkt only, EM-PCA target")
-    ax.set_xticks(x, [SCENARIO_TICK.get(s, s) for s in scen])
+    ax.set_xticks(x, [SCENARIO_TICK.get(s, s) for s in scen], fontsize=9)
     ax.set_ylabel("Out-of-sample relative MSE\nof the common component")
     ax.set_title("Recovery of the true common component on new months (lower is better)",
                  loc="left", fontsize=11, color=INK)
@@ -431,6 +431,39 @@ def fig_lambda(rows):
     _save(fig, "fig_selected_lambda.png")
 
 
+def fig_split_half(diag):
+    """Split-half transfer of the selected mapping, with the empirical value."""
+    if "split_within_r2" not in diag:
+        return
+    D = diag.dropna(subset=["split_within_r2"]).copy()
+    scen = [s for s in SCENARIO_ORDER if s in D["scenario"].unique()]
+    D["ratio"] = D.split_across_r2 / D.split_within_r2
+    D["gain"] = D.split_across_r2 - D.split_mkt_across_r2
+    emp = cal.EMPIRICAL_TARGETS["split_half"]
+    emp_val = {"ratio": emp["split_across_r2"] / emp["split_within_r2"],
+               "gain": emp["split_across_r2"] - emp["split_mkt_across_r2"],
+               "split_row_cosine": emp["split_row_cosine"]}
+    panels = [("ratio", "Across-half R² / within-half R²"),
+              ("gain", "Across-half R²: GrOWL − market only"),
+              ("split_row_cosine", "Cosine between the two halves' rows")]
+    fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.4))
+    for ax, (col, title) in zip(axes, panels):
+        data = [D.loc[D.scenario == s, col].to_numpy() for s in scen]
+        ax.boxplot(data, widths=0.5, showfliers=False, medianprops={"color": INK},
+                   boxprops={"color": INK_2}, whiskerprops={"color": INK_2}, capprops={"color": INK_2})
+        for i, v in enumerate(data):
+            jitter = np.random.default_rng(i).uniform(-0.12, 0.12, v.size)
+            ax.scatter(i + 1 + jitter, v, s=8, color=VARIANT_COLOR["pipeline_olsproj"], alpha=0.5,
+                       linewidths=0)
+        ax.axhline(emp_val[col], color=INK, ls="--", lw=1.2)
+        ax.text(len(scen) + 0.45, emp_val[col], "data", va="bottom", ha="right", fontsize=8, color=INK)
+        ax.set_xticks(range(1, len(scen) + 1), [SCENARIO_TICK.get(s, s) for s in scen], fontsize=8)
+        ax.set_title(title, fontsize=9.5, color=INK, loc="left")
+    fig.suptitle("Split-half stability of the CV-selected GrOWL mapping (PCA target)", x=0.01,
+                 ha="left", fontsize=10.5, color=INK, y=1.03)
+    _save(fig, "fig_split_half.png")
+
+
 def main():
     results = {s: load(s) for s in SCENARIO_ORDER if (RAW / s).exists()}
     results = {s: r for s, r in results.items() if r}
@@ -451,6 +484,7 @@ def main():
     fig_support(rows)
     fig_family(fam)
     fig_lambda(rows)
+    fig_split_half(diag)
     print(md)
 
 

@@ -118,6 +118,46 @@
 | MT-LASSO, true target, CV (min) | 0.000 ± 0.000 | 0.000 | 1.5 | 72% | 1.00 | 0.02 | 1.00 | 0.15 | 0.010 |
 | MT-ENet, true target, CV (min) | 0.000 ± 0.000 | 0.000 | 12.4 | 0% | 1.00 | 0.35 | 1.00 | 0.92 |  |
 
+### D2_break (50 replications)
+
+| Estimator and tuning | OOS rel. MSE | OOS 1-corr² | # selected | mkt only | family TPR | family FPR | factor TPR | factor FDR | median λ₁ |
+|---|---|---|---|---|---|---|---|---|---|
+| GrOWL, paper CV (min) | 0.719 ± 0.015 | 0.321 | 1.0 | 100% | 0.14 | 0.00 | 0.01 | 0.00 | 10.000 |
+| GrOWL, paper CV (min, converged) | 0.719 ± 0.015 | 0.321 | 1.0 | 100% | 0.14 | 0.00 | 0.01 | 0.00 | 10.000 |
+| GrOWL, CV with OLS projection | 0.515 ± 0.009 | 0.370 | 51.0 | 0% | 0.75 | 0.25 | 0.50 | 0.15 | 3.162 |
+| GrOWL, CV with OLS projection, 1-SE | 0.525 ± 0.012 | 0.363 | 20.0 | 0% | 0.63 | 0.18 | 0.20 | 0.12 | 3.162 |
+| GrOWL, best grid cell (infeasible) | 0.493 ± 0.006 | 0.345 | 9.0 | 0% | 0.47 | 0.06 | 0.10 | 0.05 | 10.000 |
+| MT-LASSO, paper CV | 0.997 ± 0.003 | 0.905 | 0.1 | 14% | 0.02 | 0.00 | 0.00 | 0.00 | 31.623 |
+| MT-LASSO, CV with OLS projection | 0.551 ± 0.012 | 0.379 | 31.4 | 0% | 0.78 | 0.27 | 0.30 | 0.18 | 3.162 |
+| MT-ENet, paper CV | 0.913 ± 0.003 | 0.543 | 17.5 | 0% | 0.29 | 0.00 | 0.21 | 0.00 |  |
+| MT-ENet, CV with OLS projection | 0.628 ± 0.017 | 0.413 | 75.2 | 0% | 0.95 | 0.66 | 0.61 | 0.28 |  |
+| OLS on mkt only | 0.497 ± 0.009 | 0.321 | 1.0 | 100% | 0.14 | 0.00 | 0.01 | 0.00 |  |
+| OLS on all 154 | 1.012 ± 0.027 | 0.472 | 154.0 | 0% | 1.00 | 1.00 | 1.00 | 0.45 |  |
+| OLS on true support | 0.889 ± 0.022 | 0.450 | 85.0 | 0% | 1.00 | 0.00 | 1.00 | 0.00 |  |
+| GrOWL, true target, CV (min) | 0.173 ± 0.009 | 0.166 | 86.6 | 0% | 0.95 | 0.73 | 0.73 | 0.26 | 1.000 |
+| MT-LASSO, true target, CV (min) | 0.170 ± 0.008 | 0.164 | 69.6 | 0% | 0.94 | 0.69 | 0.59 | 0.25 | 1.000 |
+| MT-ENet, true target, CV (min) | 0.144 ± 0.004 | 0.138 | 134.0 | 0% | 1.00 | 0.99 | 0.92 | 0.41 |  |
+
+### D2_break_themes (50 replications)
+
+| Estimator and tuning | OOS rel. MSE | OOS 1-corr² | # selected | mkt only | family TPR | family FPR | factor TPR | factor FDR | median λ₁ |
+|---|---|---|---|---|---|---|---|---|---|
+| GrOWL, paper CV (min) | 0.763 ± 0.007 | 0.430 | 1.0 | 100% | 0.10 | 0.00 | 0.01 | 0.00 | 3.162 |
+| GrOWL, paper CV (min, converged) | 0.763 ± 0.007 | 0.430 | 1.0 | 100% | 0.10 | 0.00 | 0.01 | 0.00 | 3.162 |
+| GrOWL, CV with OLS projection | 0.622 ± 0.008 | 0.439 | 50.6 | 0% | 0.64 | 0.19 | 0.43 | 0.05 | 3.162 |
+| GrOWL, CV with OLS projection, 1-SE | 0.609 ± 0.010 | 0.435 | 10.8 | 0% | 0.39 | 0.04 | 0.10 | 0.01 | 10.000 |
+| GrOWL, best grid cell (infeasible) | 0.590 ± 0.005 | 0.434 | 8.9 | 0% | 0.40 | 0.01 | 0.08 | 0.00 | 10.000 |
+| MT-LASSO, paper CV | 1.000 ± 0.000 | 1.000 | 0.0 | 0% | 0.00 | 0.00 | 0.00 | 0.00 | 31.623 |
+| MT-LASSO, CV with OLS projection | 0.646 ± 0.015 | 0.440 | 24.6 | 0% | 0.59 | 0.18 | 0.21 | 0.06 | 3.162 |
+| MT-ENet, paper CV | 0.953 ± 0.001 | 0.593 | 16.0 | 0% | 0.25 | 0.00 | 0.15 | 0.00 |  |
+| MT-ENet, CV with OLS projection | 0.725 ± 0.012 | 0.474 | 67.1 | 0% | 0.89 | 0.42 | 0.54 | 0.11 |  |
+| OLS on mkt only | 0.600 ± 0.008 | 0.430 | 1.0 | 100% | 0.10 | 0.00 | 0.01 | 0.00 |  |
+| OLS on all 154 | 1.337 ± 0.020 | 0.530 | 154.0 | 0% | 1.00 | 1.00 | 1.00 | 0.29 |  |
+| OLS on true support | 1.229 ± 0.016 | 0.513 | 110.0 | 0% | 1.00 | 0.00 | 1.00 | 0.00 |  |
+| GrOWL, true target, CV (min) | 0.178 ± 0.009 | 0.173 | 98.8 | 0% | 0.97 | 0.84 | 0.69 | 0.21 | 1.000 |
+| MT-LASSO, true target, CV (min) | 0.181 ± 0.008 | 0.175 | 78.1 | 0% | 0.95 | 0.78 | 0.56 | 0.20 | 1.000 |
+| MT-ENet, true target, CV (min) | 0.161 ± 0.004 | 0.157 | 137.2 | 0% | 1.00 | 1.00 | 0.90 | 0.28 |  |
+
 ### First stage (means over replications)
 
 | Scenario | Bai-Ng k (full) | Bai-Ng k (folds) | EM iter. (full) | missing | firm R² (7 f.) | firm R² (mkt) | sv² share PC1 of Y | R²(Y on mkt) | R²(Y on all X) | min cancorr(F̂, X) top 7 | corr²(ĉ, c) |
@@ -129,29 +169,50 @@
 | D2_proxy_weak | 5.28 | 3.03 | 496 | 0.71 | 0.275 | 0.228 | 0.609 | 0.595 | 0.758 | 0.482 | 0.599 |
 | D2_proxy_balanced | 4.80 | 2.18 | 1 | 0.00 | 0.314 | 0.221 | 0.739 | 0.706 | 0.985 | 0.934 | 0.940 |
 | D0_market_only | 5.16 | 2.98 | 498 | 0.71 | 0.222 | 0.222 | 0.612 | 0.606 | 0.706 | 0.452 | 0.606 |
+| D2_break | 6.06 | 3.56 | 469 | 0.71 | 0.336 | 0.219 | 0.503 | 0.476 | 0.806 | 0.565 | 0.535 |
+| D2_break_themes | 7.84 | 4.52 | 488 | 0.71 | 0.356 | 0.191 | 0.376 | 0.347 | 0.767 | 0.580 | 0.494 |
 
 ### CV landscape: does the CV loss rank cells like the true loss?
 
-| Scenario | CV variant | validation-target variance | Spearman(CV MSE, OOS MSE) | regret of CV choice | CV rank of best cell | cells within 1 SE |
-|---|---|---|---|---|---|---|
-| D1_sparse | Paper CV (projection z·Λ/N) | 0.027 | -0.73 | 0.395 | 72 | 2 |
-| D1_sparse | CV with OLS projection | 0.739 | 0.98 | 0.002 | 6 | 16 |
-| D1_sparse | CV on true common component | 1.000 | 1.00 | 0.000 | 1 | 1 |
-| D2_proxy | Paper CV (projection z·Λ/N) | 0.027 | -0.73 | 0.393 | 72 | 2 |
-| D2_proxy | CV with OLS projection | 0.739 | 0.98 | 0.003 | 5 | 17 |
-| D2_proxy | CV on true common component | 1.000 | 1.00 | 0.000 | 2 | 5 |
-| D2_proxy_strong | Paper CV (projection z·Λ/N) | 0.027 | -0.75 | 0.418 | 79 | 2 |
-| D2_proxy_strong | CV with OLS projection | 0.725 | 0.99 | 0.003 | 2 | 18 |
-| D2_proxy_strong | CV on true common component | 0.997 | 1.00 | 0.001 | 6 | 5 |
-| D2_proxy_weak | Paper CV (projection z·Λ/N) | 0.026 | -0.61 | 0.319 | 71 | 1 |
-| D2_proxy_weak | CV with OLS projection | 0.744 | 0.95 | 0.005 | 7 | 21 |
-| D2_proxy_weak | CV on true common component | 0.998 | 1.00 | 0.000 | 1 | 2 |
-| D2_proxy_balanced | Paper CV (projection z·Λ/N) | 0.960 | 1.00 | 0.000 | 1 | 10 |
-| D2_proxy_balanced | CV with OLS projection | 0.960 | 1.00 | 0.000 | 1 | 10 |
-| D2_proxy_balanced | CV on true common component | 0.998 | 1.00 | 0.000 | 2 | 5 |
-| D0_market_only | Paper CV (projection z·Λ/N) | 0.026 | -0.59 | 0.320 | 70 | 1 |
-| D0_market_only | CV with OLS projection | 0.734 | 0.95 | 0.016 | 25 | 28 |
-| D0_market_only | CV on true common component | 0.983 | 1.00 | 0.000 | 1 | 1 |
+| Scenario | CV variant | validation-target variance | Spearman(CV MSE, OOS MSE) | regret of CV choice | CV rank of best cell | cells within 1 SE | cells within 1 paired SE |
+|---|---|---|---|---|---|---|---|
+| D1_sparse | Paper CV (projection z·Λ/N) | 0.027 | -0.73 | 0.395 | 72 | 2 | 2 |
+| D1_sparse | CV with OLS projection | 0.739 | 0.98 | 0.002 | 6 | 16 | 5 |
+| D1_sparse | CV on true common component | 1.000 | 1.00 | 0.000 | 1 | 1 | 1 |
+| D2_proxy | Paper CV (projection z·Λ/N) | 0.027 | -0.73 | 0.393 | 72 | 2 | 2 |
+| D2_proxy | CV with OLS projection | 0.739 | 0.98 | 0.003 | 5 | 17 | 5 |
+| D2_proxy | CV on true common component | 1.000 | 1.00 | 0.000 | 2 | 5 | 3 |
+| D2_proxy_strong | Paper CV (projection z·Λ/N) | 0.027 | -0.75 | 0.418 | 79 | 2 | 4 |
+| D2_proxy_strong | CV with OLS projection | 0.725 | 0.99 | 0.003 | 2 | 18 | 3 |
+| D2_proxy_strong | CV on true common component | 0.997 | 1.00 | 0.001 | 6 | 5 | 3 |
+| D2_proxy_weak | Paper CV (projection z·Λ/N) | 0.026 | -0.61 | 0.319 | 71 | 1 | 2 |
+| D2_proxy_weak | CV with OLS projection | 0.744 | 0.95 | 0.005 | 7 | 21 | 6 |
+| D2_proxy_weak | CV on true common component | 0.998 | 1.00 | 0.000 | 1 | 2 | 1 |
+| D2_proxy_balanced | Paper CV (projection z·Λ/N) | 0.960 | 1.00 | 0.000 | 1 | 10 | 2 |
+| D2_proxy_balanced | CV with OLS projection | 0.960 | 1.00 | 0.000 | 1 | 10 | 2 |
+| D2_proxy_balanced | CV on true common component | 0.998 | 1.00 | 0.000 | 2 | 5 | 3 |
+| D0_market_only | Paper CV (projection z·Λ/N) | 0.026 | -0.59 | 0.320 | 70 | 1 | 2 |
+| D0_market_only | CV with OLS projection | 0.734 | 0.95 | 0.016 | 25 | 28 | 6 |
+| D0_market_only | CV on true common component | 0.983 | 1.00 | 0.000 | 1 | 1 | 1 |
+| D2_break | Paper CV (projection z·Λ/N) | 0.024 | -0.41 | 0.226 | 69 | 2 | 2 |
+| D2_break | CV with OLS projection | 0.655 | 0.88 | 0.022 | 10 | 10 | 2 |
+| D2_break | CV on true common component | 1.096 | 0.90 | 0.041 | 25 | 59 | 22 |
+| D2_break_themes | Paper CV (projection z·Λ/N) | 0.020 | 0.07 | 0.173 | 65 | 1 | 1 |
+| D2_break_themes | CV with OLS projection | 0.552 | 0.73 | 0.032 | 8 | 16 | 7 |
+| D2_break_themes | CV on true common component | 1.119 | 0.92 | 0.023 | 10 | 67 | 28 |
+
+### Split-half stability of the selected mapping
+
+GrOWL at the CV-selected cell (CV with OLS projection; true target: CV on the true common component) is fitted on each half of the sample and scored on both halves (R² of the half-centered target). In the regime-change scenarios the halves are the two regimes. Means over replications.
+
+| Scenario | target | within-half R² | across-half R² | mkt-only within | mkt-only across | support Jaccard | row cosine | # selected per half |
+|---|---|---|---|---|---|---|---|---|
+| D2_proxy | PCA target | 0.768 | 0.603 | 0.546 | 0.411 | 0.66 | 0.85 | 59.8 |
+| D2_proxy | true target | 0.990 | 0.981 | 0.704 | 0.702 | 0.93 | 0.58 | 147.8 |
+| D2_break | PCA target | 0.807 | 0.190 | 0.539 | 0.292 | 0.44 | 0.07 | 42.3 |
+| D2_break | true target | 0.951 | 0.483 | 0.707 | 0.588 | 0.53 | 0.11 | 76.4 |
+| D2_break_themes | PCA target | 0.746 | 0.058 | 0.395 | 0.209 | 0.29 | 0.14 | 36.8 |
+| D2_break_themes | true target | 0.971 | 0.259 | 0.604 | 0.495 | 0.46 | 0.11 | 83.2 |
 
 ### Grouping inside the six style families
 
@@ -204,6 +265,24 @@ Members per selected style family, mean cosine between the selected rows of one 
 | D2_proxy_balanced | true target, CV | growl | 146.1 | 13.97 | 0.90 | 33.8 | 19% | 9% |
 | D2_proxy_balanced | true target, CV | mtl | 140.9 | 13.90 | 0.88 | 0.0 |  | 9% |
 | D2_proxy_balanced | true target, CV | enet | 146.9 | 13.98 | 0.87 | 0.0 |  | 9% |
+| D2_break | CV, OLS projection | growl | 51.0 | 9.93 | 0.95 | 40.1 | 28% | 23% |
+| D2_break | CV, OLS projection | mtl | 31.4 | 5.45 | 0.85 | 0.0 |  | 18% |
+| D2_break | CV, OLS projection | enet | 75.2 | 9.00 | 0.70 | 0.0 |  | 15% |
+| D2_break | best grid cell | growl | 9.0 | 2.82 | 1.00 | 2.2 | 30% | 23% |
+| D2_break | best grid cell | mtl | 6.3 | 2.33 | 1.00 | 0.0 |  | 23% |
+| D2_break | best grid cell | enet | 56.9 | 8.51 | 0.84 | 0.0 |  | 19% |
+| D2_break | true target, CV | growl | 86.6 | 10.78 | 0.80 | 35.5 | 24% | 13% |
+| D2_break | true target, CV | mtl | 69.6 | 8.66 | 0.78 | 0.0 |  | 13% |
+| D2_break | true target, CV | enet | 134.0 | 12.93 | 0.57 | 0.0 |  | 9% |
+| D2_break_themes | CV, OLS projection | growl | 50.6 | 8.12 | 0.91 | 38.1 | 24% | 20% |
+| D2_break_themes | CV, OLS projection | mtl | 24.6 | 4.04 | 0.82 | 0.0 |  | 20% |
+| D2_break_themes | CV, OLS projection | enet | 67.1 | 7.41 | 0.76 | 0.0 |  | 14% |
+| D2_break_themes | best grid cell | growl | 8.9 | 2.55 | 0.99 | 1.0 | 32% | 29% |
+| D2_break_themes | best grid cell | mtl | 7.9 | 2.41 | 0.99 | 0.0 |  | 29% |
+| D2_break_themes | best grid cell | enet | 53.2 | 7.61 | 0.85 | 0.0 |  | 22% |
+| D2_break_themes | true target, CV | growl | 98.8 | 8.48 | 0.55 | 26.1 | 17% | 10% |
+| D2_break_themes | true target, CV | mtl | 78.1 | 6.90 | 0.57 | 0.0 |  | 10% |
+| D2_break_themes | true target, CV | enet | 137.2 | 10.85 | 0.37 | 0.0 |  | 8% |
 
 ### Accuracy of the tol = 1e-4 solutions at the selected cells
 
@@ -265,7 +344,25 @@ Each selected GrOWL cell is solved again with tol = 1e-9.
 | D0_market_only | oracle | cv_min | 0.845 | 0% |
 | D0_market_only | oracle | cv_min_clean | 0.845 | 0% |
 | D0_market_only | oracle | oracle | 0.872 | 0% |
+| D2_break | pipeline | cv_min | 1.000 | 0% |
+| D2_break | pipeline | cv_min_clean | 1.000 | 0% |
+| D2_break | pipeline | oracle | 1.000 | 0% |
+| D2_break | pipeline_olsproj | cv_min | 1.000 | 0% |
+| D2_break | pipeline_olsproj | cv_min_clean | 1.000 | 0% |
+| D2_break | pipeline_olsproj | oracle | 1.000 | 0% |
+| D2_break | oracle | cv_min | 1.000 | 0% |
+| D2_break | oracle | cv_min_clean | 1.000 | 0% |
+| D2_break | oracle | oracle | 1.000 | 0% |
+| D2_break_themes | pipeline | cv_min | 1.000 | 0% |
+| D2_break_themes | pipeline | cv_min_clean | 1.000 | 0% |
+| D2_break_themes | pipeline | oracle | 1.000 | 0% |
+| D2_break_themes | pipeline_olsproj | cv_min | 1.000 | 0% |
+| D2_break_themes | pipeline_olsproj | cv_min_clean | 1.000 | 0% |
+| D2_break_themes | pipeline_olsproj | oracle | 1.000 | 0% |
+| D2_break_themes | oracle | cv_min | 1.000 | 0% |
+| D2_break_themes | oracle | cv_min_clean | 1.000 | 0% |
+| D2_break_themes | oracle | oracle | 1.000 | 0% |
 
 ### Package-solver spot checks
 
-800 cells re-solved with `growl.fista_solver.growl_fista`: max relative difference 4.5e-04; same iteration count in 99.0% of cells; same support in 100.0% of cells.
+1000 cells re-solved with `growl.fista_solver.growl_fista`: max relative difference 4.5e-04; same iteration count in 99.1% of cells; same support in 100.0% of cells.

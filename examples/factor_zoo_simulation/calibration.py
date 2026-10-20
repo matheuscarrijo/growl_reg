@@ -160,10 +160,22 @@ EMPIRICAL_TARGETS = {
     "Y_r2_on_mkt": 0.357,
     "Y_r2_on_all_X_in_sample": 0.857,
     "cancorr_Fhat_X": [0.990, 0.954, 0.939, 0.911, 0.864, 0.840, 0.800],
-    # Inside-loop PCA hv-block CV (594-cell grid, 5 folds).
+    # Inside-loop PCA hv-block CV (594-cell grid, 5 folds), with the study's
+    # original out-of-fold projection (z·Λ/N; superseded).
     "cv_raw_min_cell": (3.162, 0.1, 0.75),
     "cv_promoted_cell": (10.0, 0.1, 0.25),
     "cv_promoted_support": ["mkt-rf"],
+    # Same CV with the OLS out-of-fold projection (2026-10).
+    "cv_olsproj_min_cell": (3.162, 0.0316, 0.5),
+    # Split-half statistics of montecarlo._split_half on the full-sample
+    # target at cv_olsproj_min_cell (halves 1973-03..1998-07 and
+    # 1998-08..2023-12).
+    "split_half": {
+        "split_within_r2": 0.596, "split_across_r2": 0.296,
+        "split_mkt_within_r2": 0.389, "split_mkt_across_r2": 0.270,
+        "split_support_jaccard": 0.489, "split_row_cosine": 0.343,
+        "split_n_selected": 97.5,
+    },
 }
 
 

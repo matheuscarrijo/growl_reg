@@ -18,19 +18,20 @@ market factor. The simulation asks: when the true process has seven factors,
 does this procedure find them?
 
 <!-- RESULTS-START -->
-## Main results (400 replications)
+## Main results (500 replications)
 
 Scenarios: D1 and D2 with 100 replications each; D2 with strong styles, D2
-with weak styles, D2 with no missing returns and D0 with 50 replications
-each. All tables are in [`results/summary_tables.md`](results/summary_tables.md).
+with weak styles, D2 with no missing returns, D0 and the two regime-change
+scenarios with 50 replications each. All tables are in
+[`results/summary_tables.md`](results/summary_tables.md).
 
 ![Out-of-sample error of the recovered common component](results/fig_oos_error.png)
 
 **1. The GrOWL solver and the GrOWL estimator work as expected.**
 
-- The compiled solver repeats the iterates of `growl_fista`. In 800 cells that
-  were solved again with `growl_fista` itself, the support was the same in
-  100% of the cells and the iteration count was the same in 99%. With
+- The compiled solver repeats the iterates of `growl_fista`. In 1,000 cells
+  that were solved again with `growl_fista` itself, the support was the same
+  in 100% of the cells and the iteration count was the same in 99%. With
   ρ = 0, `growl_fista` gives the `sklearn` multi-task LASSO solution
   (difference about 1e-9).
 - When the target is the true common component, cross-validated GrOWL finds
@@ -128,6 +129,55 @@ PCA moments (R² on the market 0.39, first singular-value share 0.43 against
 CV still fails (out-of-sample error 0.76 against 0.35 with the corrected
 CV), but it selects multi-factor cells in 56% of the replications.
 
+**9. A regime change in the mapping gives the instability that the data
+show.** In `D2_break` the style betas and the best proxies change at T/2; in
+`D2_break_themes` three style themes are also replaced (see
+"Data-generating processes"). All results use the corrected CV.
+
+| Scenario | OOS rel. MSE: CV choice | best grid cell | OLS on mkt only | true target, CV | # selected (CV) | Spearman(CV loss, true loss) | cells within 1 paired SE (of 117) |
+|---|---|---|---|---|---|---|---|
+| D2 proxy | 0.322 | 0.319 | 0.466 | 0.017 | 57.5 | 0.98 | 5 |
+| D2 regime change | 0.515 | 0.493 | 0.497 | 0.173 | 51.0 | 0.88 | 2 |
+| D2 new themes | 0.622 | 0.590 | 0.600 | 0.178 | 50.6 | 0.73 | 7 |
+
+Split-half statistics (GrOWL at the CV-selected cell, fitted on one half,
+scored on both halves; see "Metrics"). The data row applies the same function
+to the study's data at its CV minimum (λ₁ = 3.162, λ₂ = 0.0316, ρ = 0.5);
+halves 1973–1998 and 1998–2023.
+
+| | within-half R² | across-half R² | mkt only, within | mkt only, across | support Jaccard | row cosine |
+|---|---|---|---|---|---|---|
+| D2 proxy | 0.768 | 0.603 | 0.546 | 0.411 | 0.66 | 0.85 |
+| D2 regime change | 0.807 | 0.190 | 0.539 | 0.292 | 0.44 | 0.07 |
+| D2 new themes | 0.746 | 0.058 | 0.395 | 0.209 | 0.29 | 0.14 |
+| data | 0.596 | 0.296 | 0.389 | 0.270 | 0.49 | 0.34 |
+
+![Split-half stability](results/fig_split_half.png)
+
+- With a regime change, no time-invariant mapping is much better than the
+  market out of sample: the best grid cell has an error of 0.493 against
+  0.497 for OLS on the market (0.590 against 0.600 with new themes). Even
+  with the true target the error is 0.17–0.18, because one constant B cannot
+  fit two regimes (population spanning error 0.12–0.14, against 0.01 in D2).
+- The CV still ranks the cells well (Spearman 0.88 and 0.73) and its regret
+  is small (0.02–0.03). It selects about 51 factors, where the best cell has
+  about 9.
+- Without a break, the mapping fitted on one half explains 60% of the other
+  half, against 41% for the market. With a break it explains only 6–19%,
+  less than the market alone (21–29%), and the rows of the two halves are
+  almost orthogonal (cosine 0.07–0.14).
+- The data lie between the two designs. The ratio of across-half to
+  within-half R² is 0.50; the 5–95% range is 0.67–0.92 in D2 and 0.16–0.32
+  (0.00–0.22 with new themes) under a break. The gain over the market across
+  halves is +0.03; the range is +0.16 to +0.23 in D2 and −0.19 to −0.05 under
+  a break. The data thus reject both a stable mapping and a complete regime
+  change: part of the mapping is stable, and a large part changes.
+- A regime change does not make the top of the CV landscape wider with the
+  EM-PCA target (2–7 cells within one paired SE, against 5 in D2). It does
+  with the true target (22–28 cells, against 3). So in this design the regime
+  change explains the poor transfer across periods and the small gain over
+  the market, but not by itself the flat top of the empirical CV landscape.
+
 ### What this means for the empirical application
 
 - The market-only selection is what this CV design produces under a
@@ -142,6 +192,10 @@ CV), but it selects multi-factor cells in 56% of the replications.
   simulation).
 - GrOWL's advantage over the multi-task LASSO is family coverage, not
   prediction. Equal row norms alone do not identify factor families.
+- The split-half statistics of the data lie between a stable mapping and a
+  complete regime change. A full-sample mapping is an average over periods;
+  report its stability across sub-periods, and consider sub-period or
+  rolling estimates.
 
 ![Families selected](results/fig_family_frequency.png)
 
@@ -300,7 +354,8 @@ component also in the refit.
     python summarize.py
 
 One replication takes about 150 s on one core (the EM-PCA takes most of it).
-The 400 replications of the results above took about 4 hours on 4 cores.
+The first 400 replications took about 4 hours on 4 cores, and the 100
+regime-change replications about 2 hours on 2 cores.
 Each replication is saved in `results/raw/<scenario>/`, so a stopped run
 continues where it stopped. `summarize.py` writes the tables and figures in
 `results/`.
