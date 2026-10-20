@@ -9,6 +9,7 @@ Usage
   python run_simulation.py --list
   python run_simulation.py --scenario D2_proxy --reps 100 --n-jobs 4
   python run_simulation.py --scenario D1_sparse D0_market_only --reps 50
+  python run_simulation.py --scenario D2_proxy --add-split-half   # update stored runs
 """
 
 from __future__ import annotations
@@ -51,6 +52,22 @@ def _run_one(name, rep, out_dir):
     return rep, time.time() - t0, "done"
 
 
+def _add_split_half(name, path):
+    """Add the split-half diagnostics to a replication stored without them."""
+    warnings.simplefilter("ignore")
+    with path.open("rb") as fh:
+        result = pickle.load(fh)
+    if "split_within_r2" in result["diag"]:
+        return result["rep"], 0.0, "skipped"
+    t0 = time.time()
+    result["diag"].update(mc.split_half_for_stored(mc.SCENARIOS[name], result))
+    tmp = path.with_suffix(".tmp")
+    with tmp.open("wb") as fh:
+        pickle.dump(result, fh, protocol=pickle.HIGHEST_PROTOCOL)
+    tmp.replace(path)
+    return result["rep"], time.time() - t0, "split-half added"
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -59,6 +76,8 @@ def main(argv=None):
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--n-jobs", type=int, default=4)
     parser.add_argument("--list", action="store_true", help="List the scenarios and exit.")
+    parser.add_argument("--add-split-half", action="store_true",
+                        help="Add the split-half diagnostics to stored replications and exit.")
     args = parser.parse_args(argv)
 
     if args.list:
@@ -69,6 +88,13 @@ def main(argv=None):
     for name in args.scenario:
         if name not in mc.SCENARIOS:
             sys.exit(f"Unknown scenario {name!r}; use --list.")
+        if args.add_split_half:
+            files = sorted((RAW_DIR / name).glob("rep_*.pkl"))
+            jobs = (delayed(_add_split_half)(name, f) for f in files)
+            for rep, secs, status in Parallel(n_jobs=args.n_jobs,
+                                              return_as="generator_unordered")(jobs):
+                print(f"[{name}] rep {rep:4d} {status} {secs:7.1f}s", flush=True)
+            continue
         out_dir = RAW_DIR / name
         out_dir.mkdir(parents=True, exist_ok=True)
         reps = range(args.start, args.start + args.reps)

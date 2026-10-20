@@ -21,6 +21,10 @@ Steps of a replication
 5. Full-sample refit of every cell, selection rules (CV minimum, CV minimum
    among cells that converged in all folds, one-standard-error rule, and the
    infeasible oracle cell), and recovery metrics against the known truth.
+6. Split-half stability: GrOWL at the CV-selected cell is fitted on each
+   half of the sample, and each half's fit is scored on the other half
+   (``split_*`` diagnostics). In the regime-change scenarios the break is at
+   the midpoint, so the halves are the two regimes.
 """
 
 from __future__ import annotations
@@ -63,6 +67,15 @@ SCENARIOS = {
     "D1_sparse_balanced": dgp.Scenario(
         "D1_sparse_balanced", dgp="sparse", unbalanced=False,
         description="As D1_sparse, but every firm is observed in every month."),
+    "D2_break": dgp.Scenario(
+        "D2_break", dgp="proxy", break_at=0.5,
+        description="As D2_proxy, with a regime change at mid-sample: style betas drawn "
+                    "again and proxy loadings permuted inside each theme."),
+    "D2_break_themes": dgp.Scenario(
+        "D2_break_themes", dgp="proxy", break_at=0.5, break_new_themes=3,
+        description="As D2_break, and at the break three style themes (investment, momentum, "
+                    "low risk) are replaced by three other themes (accruals, debt issuance, "
+                    "low leverage)."),
 }
 
 
@@ -124,6 +137,77 @@ def _solver_check(Xs, Yr, cells, coefs, iters, rng, n_cells):
     return out
 
 
+
+
+def _split_half(Xs, Yr, cell):
+    """
+    Fit GrOWL at `cell` on each half of the sample and score it on both halves.
+
+    Each half is centered on its own means, so that only the slopes transfer.
+    Returns the mean within-half R^2, the mean across-half R^2, the Jaccard
+    index of the two supports and the mean cosine between the rows that both
+    halves select. Market-only OLS gives the same two R^2 for reference.
+    """
+    n = Xs.shape[0]
+    halves = [np.arange(n // 2), np.arange(n // 2, n)]
+    data = [(Xs[h] - Xs[h].mean(axis=0), Yr[h] - Yr[h].mean(axis=0)) for h in halves]
+    w = st.growl_weights(Xs.shape[1], *cell)
+    fits = [st.growl_fista_gram(st.GramProblem(x, y), w)[0] for x, y in data]
+    mkt = [np.linalg.lstsq(x[:, :1], y, rcond=None)[0] for x, y in data]
+
+    def r2(d, b, cols=slice(None)):
+        x, y = d
+        return 1.0 - np.sum((y - x[:, cols] @ b) ** 2) / np.sum(y ** 2)
+
+    s0, s1 = (np.linalg.norm(B, axis=1) > 0 for B in fits)
+    both = np.flatnonzero(s0 & s1)
+    cos = [fits[0][j] @ fits[1][j] / (np.linalg.norm(fits[0][j]) * np.linalg.norm(fits[1][j]))
+           for j in both]
+    union = int(np.sum(s0 | s1))
+    return {
+        "split_within_r2": float(np.mean([r2(data[a], fits[a]) for a in (0, 1)])),
+        "split_across_r2": float(np.mean([r2(data[1 - a], fits[a]) for a in (0, 1)])),
+        "split_support_jaccard": float(len(both) / union) if union else np.nan,
+        "split_row_cosine": float(np.mean(cos)) if cos else np.nan,
+        "split_n_selected": float(np.mean([s0.sum(), s1.sum()])),
+        "split_mkt_within_r2": float(np.mean([r2(data[a], mkt[a], slice(0, 1)) for a in (0, 1)])),
+        "split_mkt_across_r2": float(np.mean([r2(data[1 - a], mkt[a], slice(0, 1)) for a in (0, 1)])),
+    }
+
+
+def _split_half_diagnostics(Xs, targets, pipeline_cell, oracle_cell):
+    out = {}
+    for prefix, tname, cell in (("", "pipeline", pipeline_cell), ("oracle_", "oracle", oracle_cell)):
+        for k, v in _split_half(Xs, targets[tname]["Yr"], cell).items():
+            out[prefix + k] = v
+    return out
+
+
+def split_half_for_stored(scenario: dgp.Scenario, result: dict, base_seed: int = BASE_SEED) -> dict:
+    """
+    Split-half diagnostics for a replication stored without them.
+
+    The draws, the EM-PCA target and the selected cells are those of the
+    stored replication, so the values equal those of a new run.
+    """
+    rng = np.random.default_rng(np.random.SeedSequence([base_seed, result["rep"]]))
+    struct = dgp.build_structure(scenario, rng)
+    sample = dgp.draw_sample(struct, scenario.n_dates, rng)
+    pca = fs.fit_em_pca(sample.R)
+    mx, sx = st.standardizer(sample.X)
+    targets = {}
+    for name, level in (("pipeline", pca.pred), ("oracle", sample.C[:, pca.columns])):
+        my, sy = st.standardizer(level)
+        targets[name] = {"Yr": st.reduce_target((level - my) / sy)[0]}
+
+    def cell(variant):
+        row = next(r for r in result["rows"] if r["target"] == variant and r["method"] == "growl"
+                   and r["rule"] == "cv_min")
+        return row["lambda_1"], row["lambda_2"], row["ramp_size"]
+
+    variant = "pipeline_olsproj" if any(r["target"] == "pipeline_olsproj" for r in result["rows"]) \
+        else "pipeline"
+    return _split_half_diagnostics((sample.X - mx) / sx, targets, cell(variant), cell("oracle"))
 
 
 def _tight_check(prob, cells, i, B, max_iter=200_000, tol=1e-9):
@@ -246,12 +330,13 @@ def run_replication(scenario: dgp.Scenario, rep: int, base_seed: int = BASE_SEED
         row = {"target": variant, "fit_target": tname, "method": meth, "rule": rule,
                "cv_mse": float(cv_mse), "oos_rel_mse": float(oos_pair[0]),
                "oos_span_err": float(oos_pair[1]),
-               "subspace_r2": mt.subspace_r2(X[:, row_norms > 0], sample.F)}
+               "subspace_r2": mt.subspace_r2(X[:, row_norms > 0], sample.span_factors)}
         row.update(extra)
         row.update(mt.support_metrics(B, struct))
         rows.append(row)
         norms_out[(variant, meth, rule)] = row_norms.astype(np.float32)
 
+    chosen = {}
     for variant, tname in variants.items():
         fu = full[tname]
         g_mean = cv[variant]["g_mse"].mean(axis=0)
@@ -271,6 +356,7 @@ def run_replication(scenario: dgp.Scenario, rep: int, base_seed: int = BASE_SEED
 
         for rule, i in _select(g_mean, g_std, g_hit, fu["g_supp"], fu["g_oos"][:, 0],
                                n_folds).items():
+            chosen[(variant, rule)] = i
             l1, l2, rs = cells[i]
             extra = {"lambda_1": l1, "lambda_2": l2, "ramp_size": rs,
                      "hit_max_iter_any_fold": bool(g_hit[i]), "full_n_iter": int(fu["iters"][i])}
@@ -336,8 +422,11 @@ def run_replication(scenario: dgp.Scenario, rep: int, base_seed: int = BASE_SEED
         "pop_span_error": pop["pop_span_error"],
         "pop_relevant_norm_share": pop["pop_relevant_norm_share"],
         "t_pca_full": t_pca,
-        "t_total": time.time() - t_start,
     }
+    split_variant = "pipeline_olsproj" if ols_projection else "pipeline"
+    diag.update(_split_half_diagnostics(Xs, targets, cells[chosen[(split_variant, "cv_min")]],
+                                        cells[chosen[("oracle", "cv_min")]]))
+    diag["t_total"] = time.time() - t_start
     return {
         "scenario": scenario.name,
         "rep": rep,

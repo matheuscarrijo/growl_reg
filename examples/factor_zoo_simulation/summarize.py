@@ -38,11 +38,13 @@ RAW = HERE / "results" / "raw"
 OUT = HERE / "results"
 
 SCENARIO_ORDER = ["D1_sparse", "D2_proxy", "D2_proxy_strong", "D2_proxy_weak",
-                  "D2_proxy_balanced", "D0_market_only", "D1_sparse_balanced"]
+                  "D2_proxy_balanced", "D0_market_only", "D1_sparse_balanced",
+                  "D2_break", "D2_break_themes"]
 SCENARIO_TICK = {
     "D1_sparse": "D1\nsparse", "D2_proxy": "D2\nproxy", "D2_proxy_strong": "D2 proxy\nstrong styles",
     "D2_proxy_weak": "D2 proxy\nweak styles", "D2_proxy_balanced": "D2 proxy\nno missing",
     "D0_market_only": "D0\nmarket only", "D1_sparse_balanced": "D1 sparse\nno missing",
+    "D2_break": "D2 proxy\nregime change", "D2_break_themes": "D2 proxy\nnew themes",
 }
 VARIANT_LABEL = {
     "pipeline": "Paper CV (projection z·Λ/N)",
@@ -88,6 +90,15 @@ def _tie_purity(norms, fam):
     return {"tie_pairs": total, "tie_pairs_same_family": within, "selected_pairs_same_family": base}
 
 
+def _n_paired_1se(fold_mse):
+    """Cells whose mean CV-MSE exceeds the minimum by less than one paired (by fold) SE."""
+    fold_mse = np.asarray(fold_mse, dtype=float)
+    d = fold_mse - fold_mse[:, [int(np.argmin(fold_mse.mean(axis=0)))]]
+    se = d.std(axis=0, ddof=1) / np.sqrt(d.shape[0])
+    t = np.divide(d.mean(axis=0), se, out=np.zeros(d.shape[1]), where=se > 0)
+    return int(np.sum(t < 1.0))
+
+
 def tables(results):
     rows, diags, fam_rows, land_rows, solver_rows = [], [], [], [], []
     for scen, reps in results.items():
@@ -129,6 +140,7 @@ def tables(results):
                     "cv_rank_of_oracle_cell": int(np.sum(L["g_mean"] < L["g_mean"][best]) + 1),
                     "n_cells_within_1se": int(np.sum(L["g_mean"] <= L["g_mean"][chosen]
                                                      + L["g_std"][chosen] / np.sqrt(5))),
+                    "n_cells_within_paired_1se": _n_paired_1se(L["g_fold_mse"]),
                     "val_target_var_mean": float(np.mean(L["val_target_var"])),
                     "share_cells_hit_max_iter": float(np.mean(L["g_hit_any"])),
                 })
@@ -225,8 +237,9 @@ def markdown_tables(summary, diag, land, solver, fam):
 
     lines += ["### CV landscape: does the CV loss rank cells like the true loss?", "",
               "| Scenario | CV variant | validation-target variance | Spearman(CV MSE, OOS MSE) | "
-              "regret of CV choice | CV rank of best cell | cells within 1 SE |",
-              "|---|---|---|---|---|---|---|"]
+              "regret of CV choice | CV rank of best cell | cells within 1 SE | "
+              "cells within 1 paired SE |",
+              "|---|---|---|---|---|---|---|---|"]
     for scen in [s for s in SCENARIO_ORDER if s in land["scenario"].unique()]:
         for variant in VARIANT_LABEL:
             L = land[(land.scenario == scen) & (land.target == variant)]
@@ -234,8 +247,30 @@ def markdown_tables(summary, diag, land, solver, fam):
                 continue
             lines.append(f"| {scen} | {VARIANT_LABEL[variant]} | {L.val_target_var_mean.mean():.3f} | "
                          f"{L.spearman_cv_vs_oos.mean():.2f} | {L.regret_oos_rel_mse.mean():.3f} | "
-                         f"{L.cv_rank_of_oracle_cell.median():.0f} | {L.n_cells_within_1se.median():.0f} |")
+                         f"{L.cv_rank_of_oracle_cell.median():.0f} | {L.n_cells_within_1se.median():.0f} | "
+                         f"{L.n_cells_within_paired_1se.median():.0f} |")
     lines.append("")
+
+    if "split_within_r2" in diag:
+        lines += ["### Split-half stability of the selected mapping", "",
+                  "GrOWL at the CV-selected cell (CV with OLS projection; true target: CV on the true "
+                  "common component) is fitted on each half of the sample and scored on both halves "
+                  "(R² of the half-centered target). In the regime-change scenarios the halves are "
+                  "the two regimes. Means over replications.", "",
+                  "| Scenario | target | within-half R² | across-half R² | mkt-only within | "
+                  "mkt-only across | support Jaccard | row cosine | # selected per half |",
+                  "|---|---|---|---|---|---|---|---|---|"]
+        for scen in [s for s in SCENARIO_ORDER if s in diag["scenario"].unique()]:
+            D = diag[diag["scenario"] == scen]
+            if D["split_within_r2"].isna().all():
+                continue
+            for prefix, label in (("", "PCA target"), ("oracle_", "true target")):
+                g = lambda k: D[prefix + k].mean()  # noqa: E731
+                lines.append(f"| {scen} | {label} | {g('split_within_r2'):.3f} | "
+                             f"{g('split_across_r2'):.3f} | {g('split_mkt_within_r2'):.3f} | "
+                             f"{g('split_mkt_across_r2'):.3f} | {g('split_support_jaccard'):.2f} | "
+                             f"{g('split_row_cosine'):.2f} | {g('split_n_selected'):.1f} |")
+        lines.append("")
     lines += ["### Grouping inside the six style families", "",
               "Members per selected style family, mean cosine between the selected rows of one "
               "family, and number of factors in exact row-norm ties.", "",

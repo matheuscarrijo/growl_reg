@@ -167,3 +167,37 @@ def test_rho_zero_equals_sklearn_multitask_lasso(small_problem):
         mtl = MultiTaskLasso(alpha=alpha, fit_intercept=False, tol=1e-10, max_iter=100000)
         mtl.fit(X, Yr)
         np.testing.assert_allclose(B, mtl.coef_.T, atol=1e-6)
+
+
+def test_regime_change_keeps_the_first_regime_of_d2():
+    """With common random numbers, the first regime of D2_break is D2_proxy."""
+    base = dgp.Scenario("base", dgp="proxy", n_dates=120, n_firms=60)
+    brk = dgp.Scenario("brk", dgp="proxy", n_dates=120, n_firms=60, break_at=0.5,
+                       break_new_themes=3)
+    s0 = dgp.build_structure(base, np.random.default_rng(3))
+    s1 = dgp.build_structure(brk, np.random.default_rng(3))
+    j = s0.betas.shape[1]
+    np.testing.assert_array_equal(s1.betas[:, :j], s0.betas)
+    np.testing.assert_array_equal(s1.loadings[0], s0.loading)
+    # Loadings are permuted inside each theme only.
+    for c in np.unique(s1.family):
+        rows = s1.family == c
+        np.testing.assert_allclose(np.sort(s1.loadings[1][rows]), np.sort(s1.loadings[0][rows]))
+    # Three new themes become relevant.
+    assert s1.relevant_family.sum() == s0.relevant_family.sum() + 3
+
+    sample = dgp.draw_sample(s1, brk.n_dates, np.random.default_rng(4), with_missing=False)
+    regime = s1.regime(brk.n_dates)
+    assert regime[59] == 0 and regime[60] == 1
+    # Columns of a regime are zero in the other regime.
+    assert np.all(sample.F[regime == 1][:, 1:j] == 0)
+    assert np.all(sample.F[regime == 0][:, j:] == 0)
+    np.testing.assert_allclose(sample.C, sample.F @ s1.betas.T)
+    assert sample.span_factors.shape[1] == 1 + 6 + 3
+
+
+def test_regime_change_is_only_for_the_proxy_process():
+    with pytest.raises(ValueError):
+        dgp.Scenario("bad", dgp="sparse", break_at=0.5)
+    with pytest.raises(ValueError):
+        dgp.Scenario("bad", dgp="proxy", break_at=1.5)

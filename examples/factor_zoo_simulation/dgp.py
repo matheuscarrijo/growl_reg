@@ -23,6 +23,16 @@ Xiu, 2021)
     population mapping is dense inside the relevant themes and close to zero
     outside them, so the truth is a family-level support.
 
+Regime change (``break_at`` > 0, proxy process only)
+    At month floor(break_at * T) the style betas of every firm are drawn
+    again from the same distribution, the proxy loadings are permuted inside
+    each theme (another member becomes the best proxy), and, if
+    ``break_new_themes`` = m > 0, the last m relevant style themes stop
+    driving returns and the first m irrelevant themes start. The return
+    factors are then stacked by regime, F_t = [mkt_t, s_t 1{t < T_b},
+    s'_t 1{t >= T_b}], so that C = F B' with one loading matrix B. The test
+    sample has the break at the same share of its months.
+
 All moments come from ``calibration.py``.
 """
 
@@ -51,11 +61,20 @@ class Scenario:
     market_only: bool = False      # only the market drives returns
     n_unspanned: int = 0           # latent factors with no proxy in the zoo
     unspanned_vol: float = 0.0     # their monthly volatility
+    break_at: float = 0.0          # regime change at this share of the months (0 = none)
+    break_new_themes: int = 0      # style themes replaced by irrelevant themes at the break
     description: str = ""
 
     def __post_init__(self):
         if self.dgp not in {"sparse", "proxy"}:
             raise ValueError(f"Unknown dgp {self.dgp!r}.")
+        if self.break_at:
+            if not 0.0 < self.break_at < 1.0:
+                raise ValueError("break_at must be in (0, 1).")
+            if self.dgp != "proxy" or self.market_only:
+                raise ValueError("A regime change is defined for the proxy process with styles only.")
+        if not 0 <= self.break_new_themes <= min(N_STYLE, len(cal.THEMES) - N_STYLE):
+            raise ValueError("break_new_themes is out of range.")
 
     @property
     def n_return_factors(self) -> int:
@@ -77,10 +96,25 @@ class Structure:
     spell: np.ndarray             # (N, 2) first and last observed month
     theta_chol: np.ndarray = field(repr=False, default=None)
     gamma: np.ndarray = None      # (N, n_unspanned) loadings on unspanned factors
+    # Regimes. Column j of F is Theta column factor_cols[j] in the months of
+    # the regimes r with active[r, j]; loadings[r] are the proxy loadings.
+    factor_cols: np.ndarray = None    # (J,)
+    active: np.ndarray = None         # (n_regimes, J) bool
+    loadings: np.ndarray = None       # (n_regimes, K)
 
     @property
     def n_factors(self) -> int:
         return len(self.names)
+
+    @property
+    def regime_shares(self) -> np.ndarray:
+        b = self.scenario.break_at
+        return np.array([b, 1.0 - b]) if b else np.array([1.0])
+
+    def regime(self, n_dates: int) -> np.ndarray:
+        """Regime of each month (0 before the break, 1 after it)."""
+        b = self.scenario.break_at
+        return (np.arange(n_dates) >= int(b * n_dates)).astype(int) if b else np.zeros(n_dates, int)
 
 
 @dataclass
@@ -90,10 +124,16 @@ class Sample:
     C: np.ndarray                 # (T, N) true common component beta_i' f_t
     R: np.ndarray                 # (T, N) returns, NaN outside listing spells
     G: np.ndarray = None          # (T, n_unspanned) unspanned factors
+    F_span: np.ndarray = None     # (T, J') distinct Theta columns of F (regime change only)
 
     @property
     def all_factors(self):
         return self.F if self.G is None else np.hstack([self.F, self.G])
+
+    @property
+    def span_factors(self):
+        """True factors without the regime stacking, for subspace metrics."""
+        return self.F if self.F_span is None else self.F_span
 
 
 def _quantile_draw(rng, quantiles, size):
@@ -155,18 +195,45 @@ def build_structure(scenario: Scenario, rng: np.random.Generator) -> Structure:
     # Drawn last, so that the other draws do not change (common random numbers).
     gamma = rng.standard_normal((n_firms, scenario.n_unspanned)) if scenario.n_unspanned else None
 
+    loading = np.array(loading)
+    true_columns = np.array(true_columns)
+    factor_cols = np.arange(j_factors)
+    active = np.ones((1, j_factors), dtype=bool)
+    loadings = loading[None, :]
+    if scenario.break_at:
+        # Drawn after all other draws, so that the first regime equals D2_proxy.
+        m = scenario.break_new_themes
+        new_styles = np.r_[np.arange(1, 1 + N_STYLE - m), np.arange(1 + N_STYLE, 1 + N_STYLE + m)]
+        betas2 = rng.multivariate_normal(cal.BETA_MEAN[:j_factors], cov, size=n_firms)[:, 1:]
+        betas = np.hstack([betas, scenario.style_scale * betas2])
+        factor_cols = np.r_[factor_cols, new_styles]
+        active = np.zeros((2, len(factor_cols)), dtype=bool)
+        active[:, 0] = True
+        active[0, 1:j_factors] = True
+        active[1, j_factors:] = True
+        loading2 = loading.copy()
+        for c in range(1, N_THETA):
+            rows = np.flatnonzero(family == c)
+            loading2[rows] = loading[rows][rng.permutation(rows.size)]
+        loadings = np.vstack([loading, loading2])
+        relevant_family[new_styles] = True
+        true_columns = relevant_family[family]
+
     return Structure(
         scenario=scenario,
         gamma=gamma,
         names=names,
         family=family,
-        loading=np.array(loading),
-        true_columns=np.array(true_columns),
+        loading=loading,
+        true_columns=true_columns,
         relevant_family=relevant_family,
         betas=betas,
         idio_vol=idio_vol,
         spell=spell,
         theta_chol=np.linalg.cholesky(cal.THETA_CORR),
+        factor_cols=factor_cols,
+        active=active,
+        loadings=loadings,
     )
 
 
@@ -178,13 +245,14 @@ def draw_sample(struct: Structure, n_dates: int, rng: np.random.Generator,
 
     k = struct.n_factors
     fam = struct.family
-    lam = struct.loading
+    regime = struct.regime(n_dates)
+    lam = struct.loadings[regime]
     noise = rng.standard_normal((n_dates, k))
     x_std = lam * z[:, fam] + np.sqrt(np.clip(1.0 - lam ** 2, 0.0, None)) * noise
     X = cal.THETA_MEAN[fam] + cal.THETA_VOL[fam] * x_std
 
-    j_factors = struct.betas.shape[1]
-    F = theta[:, :j_factors]
+    F = theta[:, struct.factor_cols] * struct.active[regime]
+    F_span = theta[:, np.unique(struct.factor_cols)] if struct.scenario.break_at else None
     C = F @ struct.betas.T
     R = None
     if with_returns:
@@ -200,7 +268,7 @@ def draw_sample(struct: Structure, n_dates: int, rng: np.random.Generator,
         t = np.arange(n_dates)[:, None]
         observed = (t >= struct.spell[:, 0]) & (t <= struct.spell[:, 1])
         R = np.where(observed, R, np.nan)
-    return Sample(X=X, F=F, C=C, R=R, G=G)
+    return Sample(X=X, F=F, C=C, R=R, G=G, F_span=F_span)
 
 
 def population_quantities(struct: Structure) -> dict:
@@ -211,19 +279,24 @@ def population_quantities(struct: Structure) -> dict:
     population regression of the standardized common component of firm i on
     x has coefficient Sigma_xx^{-1} Cov(x, z_F) D_F beta_i / sd(c_i). The
     spanning error of firm i is the share of Var(c_i) that the whole zoo
-    cannot reproduce.
+    cannot reproduce. With a regime change, the moments are the averages of
+    the regime moments weighted by the regime shares (the small shift of the
+    factor means between regimes is ignored).
     """
-    j_factors = struct.betas.shape[1]
     corr = cal.THETA_CORR
-    fam, lam = struct.family, struct.loading
-    sxx = np.outer(lam, lam) * corr[np.ix_(fam, fam)]
-    np.fill_diagonal(sxx, 1.0)
-    g = lam[:, None] * corr[np.ix_(fam, np.arange(j_factors))]       # Cov(x, z_F)
-    cff = corr[:j_factors, :j_factors]
+    fam, cols = struct.family, struct.factor_cols
+    sxx = g = cff = 0.0
+    for w, lam, act in zip(struct.regime_shares, struct.loadings, struct.active):
+        m = act.astype(float)
+        s = np.outer(lam, lam) * corr[np.ix_(fam, fam)]
+        np.fill_diagonal(s, 1.0)
+        sxx = sxx + w * s
+        g = g + w * lam[:, None] * corr[np.ix_(fam, cols)] * m           # Cov(x, z_F)
+        cff = cff + w * corr[np.ix_(cols, cols)] * np.outer(m, m)
     proj = np.linalg.solve(sxx, g)                                      # (K, J)
     resid = cff - g.T @ proj
 
-    d = cal.THETA_VOL[:j_factors]
+    d = cal.THETA_VOL[cols]
     b = struct.betas * d                                                 # betas on z_F
     var_c = np.einsum("ij,jk,ik->i", b, cff, b)
     var_res = np.einsum("ij,jk,ik->i", b, resid, b)
