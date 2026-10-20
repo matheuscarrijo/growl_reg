@@ -174,6 +174,23 @@ missing returns), `D2_proxy_weak` (style betas × 0.5) and `D2_proxy_strong`
 (style betas × 1.5). The scenarios use common random numbers: replication r of
 every scenario uses the same seed.
 
+**Regime change.** Two more scenarios add a structural break at month
+T/2 to D2:
+
+| Scenario | What changes at the break |
+|---|---|
+| `D2_break` | The style betas of every firm are drawn again from the same distribution, and the proxy loadings λ_k are permuted inside each theme (another member becomes the best proxy of its theme). |
+| `D2_break_themes` | As `D2_break`, and three style themes (investment, momentum, low risk) stop driving returns while three other themes (accruals, debt issuance, low leverage) start. |
+
+The return factors are stacked by regime, f_t = [mkt_t, s_t·1{t < T/2},
+s'_t·1{t ≥ T/2}], so the common component is still c_t = B f_t with one
+loading matrix. The test months have the break at the same point. The
+population mapping uses the averages of the two regime moments. In
+`D2_break_themes` 10 families (110 columns) are relevant. The first-regime
+parameters of replication r (betas, loadings, idiosyncratic volatilities,
+listing spells) are those of replication r of `D2_proxy`; the factor and
+return draws are different.
+
 ### Calibration
 
 All parameters come from summary moments of the empirical data (CRSP monthly
@@ -266,6 +283,14 @@ component also in the refit.
   the number of factors in exact row-norm ties.
 - Solver accuracy: each selected cell is solved again with `tol = 1e-9`; the
   table reports the Jaccard index between the two supports.
+- **Split-half stability**: GrOWL at the CV-selected cell is fitted on each
+  half of the sample (each half centered on its own means) and scored on
+  both halves. The table reports the mean within-half R², the mean
+  across-half R² (fit on one half, score on the other), the same two numbers
+  for OLS on the market only, the Jaccard index of the two supports and the
+  mean cosine between the rows that both halves select. For the stored
+  replications of earlier scenarios, `run_simulation.py --add-split-half`
+  computes these numbers from the same draws and selected cells.
 
 ## How to run
 
@@ -292,7 +317,7 @@ continues where it stopped. `summarize.py` writes the tables and figures in
 | `montecarlo.py` | one replication; scenario list |
 | `run_simulation.py` | parallel runner |
 | `summarize.py` | tables and figures |
-| `../../tests/test_factor_zoo_simulation.py` | checks of the solver and the reduction |
+| `../../tests/test_factor_zoo_simulation.py` | checks of the solver, the reduction and the regime change |
 
 ## References
 
