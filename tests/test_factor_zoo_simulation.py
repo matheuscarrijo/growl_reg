@@ -154,3 +154,16 @@ def test_population_mapping_is_sparse_in_d1():
     assert pop["pop_span_error"] < 1e-12
     nonzero = pop["pop_row_norm"] > 1e-8 * pop["pop_row_norm"].max()
     assert np.array_equal(nonzero, struct.true_columns)
+
+
+def test_rho_zero_equals_sklearn_multitask_lasso(small_problem):
+    """With ramp_size = 0 the GrOWL penalty is the multi-task LASSO penalty."""
+    from sklearn.linear_model import MultiTaskLasso
+
+    X, Y = small_problem
+    Yr, _ = st.reduce_target(Y)
+    for alpha in (0.05, 0.3):
+        B, _ = _package_fit(X, Yr, alpha, 0.0, 0.0, max_iter=50000, tol=1e-10)
+        mtl = MultiTaskLasso(alpha=alpha, fit_intercept=False, tol=1e-10, max_iter=100000)
+        mtl.fit(X, Yr)
+        np.testing.assert_allclose(B, mtl.coef_.T, atol=1e-6)

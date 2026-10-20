@@ -39,6 +39,11 @@ OUT = HERE / "results"
 
 SCENARIO_ORDER = ["D1_sparse", "D2_proxy", "D2_proxy_strong", "D2_proxy_weak",
                   "D2_proxy_balanced", "D0_market_only", "D1_sparse_balanced"]
+SCENARIO_TICK = {
+    "D1_sparse": "D1\nsparse", "D2_proxy": "D2\nproxy", "D2_proxy_strong": "D2 proxy\nstrong styles",
+    "D2_proxy_weak": "D2 proxy\nweak styles", "D2_proxy_balanced": "D2 proxy\nno missing",
+    "D0_market_only": "D0\nmarket only", "D1_sparse_balanced": "D1 sparse\nno missing",
+}
 VARIANT_LABEL = {
     "pipeline": "Paper CV (projection z·Λ/N)",
     "pipeline_olsproj": "CV with OLS projection",
@@ -308,7 +313,7 @@ def fig_oos(summary):
                label="GrOWL, best grid cell, EM-PCA target (infeasible)")
     ax.scatter(x, mkt, marker="_", s=400, color=BENCH, linewidths=2.5, zorder=3,
                label="OLS on mkt only, EM-PCA target")
-    ax.set_xticks(x, scen)
+    ax.set_xticks(x, [SCENARIO_TICK.get(s, s) for s in scen])
     ax.set_ylabel("Out-of-sample relative MSE\nof the common component")
     ax.set_title("Recovery of the true common component on new months (lower is better)",
                  loc="left", fontsize=11, color=INK)

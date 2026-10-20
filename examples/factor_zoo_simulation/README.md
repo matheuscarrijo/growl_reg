@@ -18,6 +18,136 @@ market factor. The simulation asks: when the true process has seven factors,
 does this procedure find them?
 
 <!-- RESULTS-START -->
+## Main results (400 replications)
+
+Scenarios: D1 and D2 with 100 replications each; D2 with strong styles, D2
+with weak styles, D2 with no missing returns and D0 with 50 replications
+each. All tables are in [`results/summary_tables.md`](results/summary_tables.md).
+
+![Out-of-sample error of the recovered common component](results/fig_oos_error.png)
+
+**1. The GrOWL solver and the GrOWL estimator work as expected.**
+
+- The compiled solver repeats the iterates of `growl_fista`. In 800 cells that
+  were solved again with `growl_fista` itself, the support was the same in
+  100% of the cells and the iteration count was the same in 99%. With
+  ρ = 0, `growl_fista` gives the `sklearn` multi-task LASSO solution
+  (difference about 1e-9).
+- When the target is the true common component, cross-validated GrOWL finds
+  every family that drives returns in 100% of the replications of every
+  scenario. Its out-of-sample error is 0.000–0.027.
+- At the cells that the pipeline selects, the `tol = 1e-4` solution has the
+  same support as a `tol = 1e-9` solution (Jaccard index ≥ 0.999). The
+  supports differ only at λ₁ = 0.01, which the CV selects with the true
+  target in D1 and D0: there FISTA stops at `max_iter` in 42% of the D1
+  replications, and the Jaccard index is 0.94 (D1) and 0.85 (D0).
+
+**2. The inside-loop CV of the study selects the market for a mechanical
+reason.**
+
+| Scenario | Paper CV: market-only choice | Paper CV: median λ₁ | Validation-target variance (paper / OLS projection) | Spearman(CV loss, true loss) (paper / OLS projection) |
+|---|---|---|---|---|
+| D1 sparse | 100% | 10 | 0.027 / 0.739 | −0.73 / +0.98 |
+| D2 proxy | 100% | 10 | 0.027 / 0.739 | −0.73 / +0.98 |
+| D2 strong styles | 44% | 3.16 | 0.027 / 0.725 | −0.75 / +0.99 |
+| D2 weak styles | 100% | 10 | 0.026 / 0.744 | −0.61 / +0.95 |
+| D2 no missing | 0% | 0.1 | 0.960 / 0.960 | +1.00 / +1.00 |
+| D0 market only | 100% | 10 | 0.026 / 0.734 | −0.59 / +0.95 |
+
+- The study projects the validation months onto the training loadings as
+  f_t = z_t Λ / N, with z = 0 for unobserved firms. About 75% of the firms
+  are unobserved in a validation month, so the validation target keeps only
+  about 3% of its variance (the training target has variance 1).
+- A near-zero validation target rewards the cells that predict almost
+  nothing. So the CV loss ranks the cells in the opposite order of the true
+  out-of-sample loss, and the CV selects λ₁ = 10 with only the market, as in
+  the empirical application. The true process has seven factors.
+- The selected cell shrinks the market coefficient so much that its
+  out-of-sample error (0.71 in D1 and D2) is larger than the error of OLS on
+  the market alone (0.47). The multi-task LASSO path under the same CV
+  selects an empty model in 50% of the D1 and D2 replications.
+- With no missing returns the same procedure works (it makes the same choice
+  as the corrected CV). The cause is the projection of an unbalanced panel,
+  not GrOWL and not the hv-block design.
+
+**3. With an OLS projection the CV works.** The OLS projection regresses the
+observed z_t on their loadings (the EM E-step with Λ fixed).
+
+- The CV choice is within 0.002–0.005 of the best cell on the grid in D1 and
+  D2 (0.016 in D0); see the orange bars in the figure.
+- It selects the market, size, value, profitability and low risk in 100% of
+  the D1 and D2 replications. Investment and momentum are selected in only
+  5–26%: the first stage does not recover them well (see point 4).
+- Under a market-only truth it selects only the market in 80% of the
+  replications, and in 100% with the one-standard-error rule.
+
+**4. The first stage limits what any second stage can find.** With a
+CRSP-like panel (71% missing), the EM-PCA common component has a mean
+squared correlation of 0.66 with the true common component (0.94 with no
+missing returns). The best GrOWL cell on the grid then has an out-of-sample
+error of 0.32, against 0.00–0.02 with the true target.
+
+**5. GrOWL against the multi-task LASSO and Elastic Net.** All three use the
+corrected CV.
+
+| Scenario | Method | OOS rel. MSE | # selected | members per selected style family | factor TPR | factor FDR |
+|---|---|---|---|---|---|---|
+| D1 sparse | GrOWL | 0.319 | 21.5 | 3.3 | 0.73 | 0.59 |
+| D1 sparse | MT-LASSO | 0.319 | 9.9 | 1.3 | 0.72 | 0.48 |
+| D1 sparse | MT-ENet | 0.354 | 90.0 | 9.9 | 0.85 | 0.93 |
+| D2 proxy | GrOWL | 0.322 | 57.5 | 9.7 | 0.53 | 0.18 |
+| D2 proxy | MT-LASSO | 0.322 | 28.5 | 5.8 | 0.29 | 0.14 |
+| D2 proxy | MT-ENet | 0.357 | 91.2 | 10.0 | 0.70 | 0.34 |
+
+- GrOWL and the multi-task LASSO predict equally well (difference ≤ 0.007 in
+  all scenarios). The Elastic Net is worse by 0.01–0.04 in the scenarios with
+  style factors and missing returns.
+- GrOWL keeps more members of each selected family, with rows that point in
+  the same direction (mean within-family cosine 0.98–0.99). When the zoo holds
+  noisy proxies of a latent factor (D2), this gives a better coverage of the
+  proxies at a similar FDR. When the zoo holds the true factor and redundant
+  copies (D1), the extra members are false positives at the factor level.
+- Under the one-standard-error rule GrOWL often selects a ρ = 0 cell, so its
+  results equal the multi-task LASSO results.
+
+**6. Family-level truth is not fully identifiable in a realistic zoo.** The
+"irrelevant" quality theme is selected in 100% of the D1 and D2
+replications, and low leverage in 10–55%. Their theme returns are highly
+correlated with the true factors (low leverage: −0.93 with value, −0.84 with
+low risk; quality: 0.53 with profitability), so they are near substitutes.
+
+**7. Exact row-norm ties are weak evidence of family membership.** In the
+GrOWL tie groups, 15–31% of the pairs belong to the same family, against a
+chance level of 9–27% among all selected pairs.
+
+**8. Calibration check.** The first stage of D1 and D2 gives a common
+component that is more market-dominated than in the data (R² of Y on the
+market 0.51, data 0.36). `D2_proxy_strong` (style betas × 1.5) matches the
+PCA moments (R² on the market 0.39, first singular-value share 0.43 against
+0.41), with a higher firm R² (0.39 against 0.32). In that scenario the paper's
+CV still fails (out-of-sample error 0.76 against 0.35 with the corrected
+CV), but it selects multi-factor cells in 56% of the replications.
+
+### What this means for the empirical application
+
+- The market-only selection is what this CV design produces under a
+  seven-factor truth. So it is not evidence that the zoo adds nothing beyond
+  the market.
+- A read-only check on the empirical folds found the same attenuation: the
+  mean validation-target variance is 0.018–0.065 with the original projection
+  and 0.38–1.16 with the OLS projection.
+- Use an OLS (E-step) projection for the out-of-fold months, and report the
+  support of the near-optimal cells as a set, because the top of the CV
+  landscape is flat (10–28 cells within one standard error in the
+  simulation).
+- GrOWL's advantage over the multi-task LASSO is family coverage, not
+  prediction. Equal row norms alone do not identify factor families.
+
+![Families selected](results/fig_family_frequency.png)
+
+![Selected λ₁](results/fig_selected_lambda.png)
+
+![Number of selected factors](results/fig_support_size.png)
 <!-- RESULTS-END -->
 
 ## Data-generating processes
@@ -145,6 +275,7 @@ component also in the refit.
     python summarize.py
 
 One replication takes about 150 s on one core (the EM-PCA takes most of it).
+The 400 replications of the results above took about 4 hours on 4 cores.
 Each replication is saved in `results/raw/<scenario>/`, so a stopped run
 continues where it stopped. `summarize.py` writes the tables and figures in
 `results/`.
